@@ -6,6 +6,7 @@ const morgan = require('morgan');
 const userRouter = require('./routes/user/user.router.js');
 const assistantRouter = require('./routes/assistant/assistant.router.js');
 const sessionRouter = require('./routes/session/session.router.js');
+const chatRouter = require('./routes/chat/chat.router.js');
 
 const { CORS_ALLOW_ORIGIN } = require('./config.js');
 
@@ -37,6 +38,7 @@ app.get('/healthz', (_req, res) => {
 app.use('/api/users', userRouter);
 app.use('/api/assistants', assistantRouter);
 app.use('/api/sessions', sessionRouter);
+app.use('/api/chats', chatRouter);
 
 
 // -------- End API routes ----------

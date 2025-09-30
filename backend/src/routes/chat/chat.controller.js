@@ -20,34 +20,10 @@ app.post('/admin/reload', (_req, res) => {
 });
 
 // ---------- Non-streaming ----------
-let history = [];
-app.post('/chat', async (req, res) => {
+async function doStreamChat(req, res) {
   try {
-    const { message, history = [] } = req.body;
-
-    const response = await client.responses.create({
-      model: MODEL,
-      instructions: SYSTEM_PROMPT,
-      input: [
-        { role: 'system', content: 'Answer strictly from your system knowledge.' },
-        ...history,                       // optional: [{role:'user'|'assistant', content:'...'}]
-        { role: 'user', content: message }
-      ]
-    });
-
-    res.json({
-      answer: response.output_text
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: String(err) });
-  }
-});
-
-// ---------- Streaming (SSE) ----------
-app.post('/chat/stream', async (req, res) => {
-  try {
-    const { message } = req.body;
+    let history = [];
+    const { assistantId, chatId, message } = req.body;
 
     // SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
@@ -71,6 +47,7 @@ app.post('/chat/stream', async (req, res) => {
     },
     });
 
+    // Store User Messages
     history.push({ role: "user", content: message });
     
     let msg = '';
@@ -85,6 +62,7 @@ app.post('/chat/stream', async (req, res) => {
       }
     }
 
+    // Store Assistant Messages
     history.push({ role: "assistant", content: msg });
 
 
@@ -96,4 +74,10 @@ app.post('/chat/stream', async (req, res) => {
     res.write(`data: ${JSON.stringify({ error: String(err) })}\n\n`);
     res.end();
   }
-});
+}
+
+
+
+module.exports = {
+  doStreamChat
+};
