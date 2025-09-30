@@ -1,23 +1,23 @@
-const SYSTEM_PATH = path.resolve('prompts/sg_doctor_recomendation_prompt.md');
-function loadSystemPrompt() {
-    if (!fs.existsSync(SYSTEM_PATH)) {
-        throw new Error('prompts/sg_doctor_recomendation_prompt.md');
-    }
+// const SYSTEM_PATH = path.resolve('prompts/sg_doctor_recomendation_prompt.md');
+// function loadSystemPrompt() {
+//     if (!fs.existsSync(SYSTEM_PATH)) {
+//         throw new Error('prompts/sg_doctor_recomendation_prompt.md');
+//     }
 
-    return fs.readFileSync(SYSTEM_PATH, 'utf-8');
-}
-let SYSTEM_PROMPT = loadSystemPrompt();
+//     return fs.readFileSync(SYSTEM_PATH, 'utf-8');
+// }
+// let SYSTEM_PROMPT = loadSystemPrompt();
 
 // Reload System Prompt
-app.post('/admin/reload', (_req, res) => {
-    try { 
-        SYSTEM_PROMPT = loadSystemPrompt(); 
-        res.json({ ok: true }); 
-    }
-    catch (e) { 
-        res.status(500).json({ ok: false, error: e.message }); 
-    }
-});
+// app.post('/admin/reload', (_req, res) => {
+//     try { 
+//         SYSTEM_PROMPT = loadSystemPrompt(); 
+//         res.json({ ok: true }); 
+//     }
+//     catch (e) { 
+//         res.status(500).json({ ok: false, error: e.message }); 
+//     }
+// });
 
 // ---------- Non-streaming ----------
 async function doStreamChat(req, res) {

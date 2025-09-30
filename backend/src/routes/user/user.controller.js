@@ -14,7 +14,7 @@ async function register(req, res, next) {
     if (exists) return res.status(409).json({ error: 'User already exists' });
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const user = await User.create({ email, passwordHash });
+    const user = await User.create({ email, password: passwordHash });
     return res.status(201).json({ id: user._id, email: user.email });
   } catch (err) {
     return next(err);
@@ -29,7 +29,7 @@ async function login(req, res, next) {
     const user = await User.findOne({ email });
     if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
-    const ok = await bcrypt.compare(password, user.passwordHash);
+    const ok = await bcrypt.compare(password, user.password);
     if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
 
     const token = jwt.sign({ sub: String(user._id), email: user.email }, JWT_SECRET, { expiresIn: '2h' });
