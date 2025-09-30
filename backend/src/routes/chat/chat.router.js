@@ -1,10 +1,10 @@
 const express = require('express');
 
-const chatController = require('./chat.controller');
+const { doStreamChat } = require('./chat.controller');
 
 const chatRouter = express.Router();
 
 // chatRouter.post('/', null);
-// chatRouter.post('/stream', chatController);
+chatRouter.post('/stream', doStreamChat);
 
 module.exports = chatRouter;

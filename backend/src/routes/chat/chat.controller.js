@@ -1,51 +1,91 @@
-// const SYSTEM_PATH = path.resolve('prompts/sg_doctor_recomendation_prompt.md');
-// function loadSystemPrompt() {
-//     if (!fs.existsSync(SYSTEM_PATH)) {
-//         throw new Error('prompts/sg_doctor_recomendation_prompt.md');
-//     }
+const path = require('path');
+const OpenAI = require('openai');
+const fs = require('fs');
 
-//     return fs.readFileSync(SYSTEM_PATH, 'utf-8');
-// }
-// let SYSTEM_PROMPT = loadSystemPrompt();
+const { OPENAI_MODEL } = require('../../config');
+const { asssistantMap, initSystemPromptMap } = require('../assistant/assistant.controller');
 
-// Reload System Prompt
-// app.post('/admin/reload', (_req, res) => {
-//     try { 
-//         SYSTEM_PROMPT = loadSystemPrompt(); 
-//         res.json({ ok: true }); 
-//     }
-//     catch (e) { 
-//         res.status(500).json({ ok: false, error: e.message }); 
-//     }
-// });
 
-// ---------- Non-streaming ----------
+function loadSystemPrompt(assistantId) {
+
+    let systemPrompt;
+    if (assistantId) {
+      const asstConf = asssistantMap.get(assistantId);
+
+      if (asstConf && asstConf?.systemPromptFile) {
+        systemPrompt = asstConf?.systemPromptFile;
+      }
+    }
+    
+    if (systemPrompt) {
+      const systemPromptPath = path.join(__dirname, '..', '..', '..', 'prompts', systemPrompt);
+      if (!fs.existsSync(systemPromptPath)) {
+        return '';
+      } else {
+        return fs.readFileSync(systemPromptPath, 'utf-8');
+      }
+    }
+}
+
+function loadVectorId(assistantId) {
+  let vectorId;
+  if (assistantId) {
+    const asstConf = asssistantMap.get(assistantId);
+
+    vectorId = asstConf?.vectorStoreId;
+  }
+
+  return vectorId;
+}
+
+function loadProjectKey(assistantId) {
+  let projectKey;
+  if (assistantId) {
+    const asstConf = asssistantMap.get(assistantId);
+
+    projectKey = asstConf?.apiKey;
+  }
+
+  return projectKey;
+}
+
 async function doStreamChat(req, res) {
   try {
     let history = [];
-    const { assistantId, chatId, message } = req.body;
+    const { assistantId, sessionId, message } = req.body;
+    const systemPromptIns = loadSystemPrompt(assistantId);
+    const vectorStoreId = loadVectorId(assistantId);
+    const projectApiKey = loadProjectKey(assistantId);
 
     // SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
-    const stream = await client.responses.create({
-        model: MODEL,
-        instructions: SYSTEM_PROMPT,
+    const client = new OpenAI({ apiKey: projectApiKey });
+
+    const clientConfig = {
+        model: OPENAI_MODEL,
+        instructions: systemPromptIns,
         input: [
             { role: 'system', content: 'Answer strictly from your system knowledge.' },
             ...history,
-            { role: 'user', content: message }
+            { 
+              role: 'user', 
+              content: message,  
+            }
         ],
         stream: true,
-        tools: [{ type: 'file_search' }],
-        tool_resources: {
-        file_search: {
-            vector_store_ids: [process.env.VECTOR_STORE_ID] // <-- REQUIRED
-        }
-    },
-    });
+    };
+
+    if (vectorStoreId) {
+      clientConfig['tools'] = [{
+          "type": "file_search",
+          "vector_store_ids": [vectorStoreId]
+      }];
+    }
+
+    const stream = await client.responses.create(clientConfig);
 
     // Store User Messages
     history.push({ role: "user", content: message });
@@ -79,5 +119,5 @@ async function doStreamChat(req, res) {
 
 
 module.exports = {
-  doStreamChat
+  doStreamChat,
 };
