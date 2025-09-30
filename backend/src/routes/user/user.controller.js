@@ -1,10 +1,11 @@
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { User } from './user.model.js';
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+const { JWT_SECRET } = require('../../config.js');
 
-export async function register(req, res, next) {
+const User = require('../../models/users/user.mongo.js');
+
+async function register(req, res, next) {
   try {
     const { email, password } = req.body || {};
     if (!email || !password) return res.status(400).json({ error: 'email and password required' });
@@ -18,9 +19,9 @@ export async function register(req, res, next) {
   } catch (err) {
     return next(err);
   }
-}
+};
 
-export async function login(req, res, next) {
+async function login(req, res, next) {
   try {
     const { email, password } = req.body || {};
     if (!email || !password) return res.status(400).json({ error: 'email and password required' });
@@ -36,4 +37,9 @@ export async function login(req, res, next) {
   } catch (err) {
     return next(err);
   }
+};
+
+module.exports = {
+  register,
+  login
 }
