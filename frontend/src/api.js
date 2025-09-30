@@ -4,6 +4,7 @@ export const API_BASE =
 /** JSON fetch helper; adds Authorization if token exists */
 export async function api(path, { method = "GET", headers = {}, body } = {}) {
   const token = getToken();
+
   const res = await fetch(`${API_BASE}${path}`, {
     method,
     headers: {
@@ -19,7 +20,9 @@ export async function api(path, { method = "GET", headers = {}, body } = {}) {
     try {
       const data = await res.json();
       if (data?.error) msg = data.error;
-    } catch {}
+    } catch (err) {
+      console.log(err);
+    }
     throw new Error(msg);
   }
   return res.json();
