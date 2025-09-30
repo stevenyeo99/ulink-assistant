@@ -11,7 +11,7 @@ const configs = {
     OPENAI_MODEL: process.env.OPENAI_MODEL || 'gpt-5o',
 
     // MONGO DB URI
-    MONGODB_URI: process.env.MONGODB_URI || ''
+    MONGODB_URI: process.env.MONGODB_URI || 'a'
 };
 
 module.exports = configs;
