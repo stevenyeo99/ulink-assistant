@@ -24,7 +24,17 @@ async function saveChat(chat) {
     );
 }
 
+async function getAllChats(filter = {}, skip, limit) {
+    return await Chat.find(filter, {
+        __v: 0
+    })
+    .sort({ updatedAt: -1 })
+    .skip(skip)
+    .limit(limit);
+}
+
 module.exports = {
     findChat,
-    addChat
+    addChat,
+    getAllChats
 };

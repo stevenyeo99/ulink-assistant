@@ -3,11 +3,11 @@ const OpenAI = require('openai');
 const fs = require('fs');
 
 const { OPENAI_MODEL } = require('../../config');
-const { asssistantMap, initSystemPromptMap } = require('../assistant/assistant.controller');
+const { asssistantMap } = require('../assistant/assistant.controller');
 
 const { fallbackTitle } = require('../../utils/text-util');
 
-const { findChat, addChat } = require('../../models/chats/chat.model');
+const { findChat, addChat, getAllChats } = require('../../models/chats/chat.model');
 const { addMessage, findMessageByChatId } = require('../../models/messages/message.model');
 
 
@@ -140,8 +140,40 @@ async function doStreamChat(req, res) {
   }
 }
 
+async function doGetChatHistory(req, res) {
+  const { userId, skip, limit } = req.query;
 
+  if (!userId) {
+    return res.status(400).json({
+      message: 'Please provide valid userId'
+    });
+  }
+  
+  const chatHistories = await getAllChats({userId}, skip, limit);
+
+  return res.status(200).json({
+    data: chatHistories
+  });
+}
+
+async function doGetChatMessages(req, res) {
+  const { chatId } = req.params;
+
+  if (!chatId) {
+    return res.status(400).json({
+      message: 'Please provide valid chatId'
+    });
+  }
+
+  const chatMessages = await findMessageByChatId({chatId});
+
+  return res.status(200).json({
+    data: chatMessages
+  });
+}
 
 module.exports = {
   doStreamChat,
+  doGetChatHistory,
+  doGetChatMessages
 };
