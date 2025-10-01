@@ -1,4 +1,4 @@
-const mongoose = 'mongoose';
+const mongoose = require('mongoose');
 
 const ChatSchema = new mongoose.Schema({
     title: {
@@ -6,26 +6,18 @@ const ChatSchema = new mongoose.Schema({
         required: true
     },
     userId: {
-        type: String,
-        required: true
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'User' 
     },
     assistantId: {
-        type: String, 
-        required: true
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Assistant' 
     },
     sessionId: {
         type: String,
         required: true
     },
-    createdAt: {
-        type: Date,
-        default: Date.now
-    },
-    updatedAt: {
-        type: Date,
-        default: Date.now
-    }
-});
+}, { timestamps: true });
 
 const Chat = mongoose.model('Chat', ChatSchema);
 

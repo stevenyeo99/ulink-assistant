@@ -5,6 +5,11 @@ const fs = require('fs');
 const { OPENAI_MODEL } = require('../../config');
 const { asssistantMap, initSystemPromptMap } = require('../assistant/assistant.controller');
 
+const { fallbackTitle } = require('../../utils/text-util');
+
+const { findChat, addChat } = require('../../models/chats/chat.model');
+const { addMessage, findMessageByChatId } = require('../../models/messages/message.model');
+
 
 function loadSystemPrompt(assistantId) {
 
@@ -51,11 +56,24 @@ function loadProjectKey(assistantId) {
 
 async function doStreamChat(req, res) {
   try {
-    let history = [];
-    const { assistantId, sessionId, message } = req.body;
+    const { userId, assistantId, sessionId, message } = req.body;
     const systemPromptIns = loadSystemPrompt(assistantId);
     const vectorStoreId = loadVectorId(assistantId);
     const projectApiKey = loadProjectKey(assistantId);
+
+    let existingChat = await findChat({ sessionId });
+    let history = [];
+    if (!existingChat) {
+      const title = fallbackTitle(message);
+      existingChat = await addChat({
+        title,
+        userId,
+        sessionId,
+        assistantId,
+      });
+      
+      history = await findMessageByChatId(existingChat?._id);
+    }
 
     // SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
@@ -88,7 +106,11 @@ async function doStreamChat(req, res) {
     const stream = await client.responses.create(clientConfig);
 
     // Store User Messages
-    history.push({ role: "user", content: message });
+    addMessage({
+      chatId: existingChat?._id,
+      role: 'user',
+      content: message
+    });
     
     let msg = '';
     for await (const event of stream) {
@@ -103,12 +125,14 @@ async function doStreamChat(req, res) {
     }
 
     // Store Assistant Messages
-    history.push({ role: "assistant", content: msg });
+    addMessage({
+      chatId: existingChat?._id.toString(),
+      role: 'assistant',
+      content: msg
+    });
 
-
-    console.log(msg);
-
-    res.end();
+    // console.log(msg);
+    return res.end();
   } catch (err) {
     console.error(err);
     res.write(`data: ${JSON.stringify({ error: String(err) })}\n\n`);

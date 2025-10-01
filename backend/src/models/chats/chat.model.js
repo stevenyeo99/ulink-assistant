@@ -1,31 +1,30 @@
 const Chat = require('./chat.mongo');
 
-export async function addMessage(message) {
-    await saveMessage(message);
-}
-
-async function saveMessage(message) {
-    await Message.findOneAndUpdate(
-        {
-            chatId: message.chatId
-        },
-        message,
-        {
-            upsert: true
-        }
-    );
-}
-
-async function findMessageByChatId(filter) {
-    return await Message.findOne({}, {
-        _id: 0,
+async function findChat(filter) {
+    return await Chat.findOne(filter, {
         __v: 0
     })
     .sort({ timestamp: 1 });
 }
 
+async function addChat(chat) {
+    return await saveChat(chat);
+}
+
+async function saveChat(chat) {
+    return await Chat.findOneAndUpdate(
+        {
+            sessionId: chat?.sessionId
+        },
+        chat,
+        {
+            upsert: true,
+            new: true
+        }
+    );
+}
+
 module.exports = {
-    addMessage,
-    saveMessage,
-    findMessageByChatId
+    findChat,
+    addChat
 };
