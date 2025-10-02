@@ -1,10 +1,27 @@
+/* =========================================================
+   Ulink UI — global styles + login card + chat console
+   ========================================================= */
 :root{
-  --bg:#fff; --text:#0b1220; --ulink-teal:#33c0c5; --ulink-orange:#ff7a2e;
-  --spot-y: 220px;
+  --bg:#fff;
+  --text:#0b1220;
+  --muted:#5f6672;
+
+  /* brand */
+  --ulink-teal:#33c0c5;
+  --ulink-orange:#ff7a2e;
+
+  /* login spotlight vertical position */
+  --spot-y:220px;
 }
-*{box-sizing:border-box} html,body,#root{height:100%}
+
+/* ---------- page reset ---------- */
+*{ box-sizing:border-box }
+html,body,#root{ height:100% }
+
 body{
-  margin:0; color:var(--text); background:#fff;
+  margin:0;
+  color:var(--text);
+  background:#fff;
   background-image:
     radial-gradient(900px 600px at 15% 0%, rgba(51,192,197,.10), transparent 55%),
     radial-gradient(900px 600px at 85% 0%, rgba(255,122,46,.10), transparent 55%),
@@ -12,29 +29,182 @@ body{
   background-attachment: fixed,fixed,fixed;
   font-family: ui-sans-serif, system-ui, Segoe UI, Roboto, Arial;
 }
+
+/* subtle spotlight for centered login card */
 body::before{
-  content:""; position:fixed; inset:0;
+  content:"";
+  position:fixed; inset:0;
   background: radial-gradient(360px 260px at 50% var(--spot-y), rgba(17,24,39,.06), rgba(17,24,39,0) 70%);
   pointer-events:none; z-index:0;
 }
-a{color:inherit; text-decoration:none}
-.center-screen{min-height:100%; display:grid; place-items:center; padding:24px}
+
+a{ color:inherit; text-decoration:none }
+
+/* ---------- primitives ---------- */
+.center-screen{ min-height:100%; display:grid; place-items:center; padding:24px }
+.wrap{ max-width:960px; margin:0 auto; padding:1rem }
+.row{ display:flex; align-items:center; gap:.6rem; flex-wrap:wrap }
+.muted{ color:#6b7280 }
+.hr{ height:1px; background:linear-gradient(90deg, transparent, #e4e7ee, transparent); margin:.75rem 0 }
+
+/* inputs & buttons */
+.input{
+  width:100%;
+  padding:.7rem .9rem;
+  border-radius:12px;
+  border:1px solid #d6dbe3;
+  background:#f7f9fc;
+  outline:none;
+}
+.input:focus{
+  border-color:#9fdde0;
+  box-shadow:0 0 0 4px rgba(51,192,197,.18);
+}
+
+.button{
+  display:inline-flex; align-items:center; justify-content:center; gap:.4rem;
+  padding:.75rem 1rem; border-radius:12px; border:1px solid transparent;
+  cursor:pointer; font-weight:600;
+  transition:transform .06s ease, opacity .15s ease, box-shadow .15s ease;
+}
+.button:active{ transform:translateY(1px) }
+.button.primary{
+  background:linear-gradient(135deg, var(--ulink-orange), #ff8e4c);
+  color:#fff;
+  box-shadow:0 6px 16px rgba(17,24,39,.08);
+}
+.button.ghost{ background:#fff; border-color:#d6dbe3 }
+.button.ghost:hover{ background:#f9fbff }
+
+/* ---------- login / card ---------- */
 .card{
-  width:100%; max-width:420px; background:#fff; border:1px solid #e6eaf1; border-radius:18px; padding:1.25rem;
+  width:100%; max-width:420px;
+  background:#fff; border:1px solid #e6eaf1; border-radius:18px; padding:1.25rem;
   box-shadow:0 18px 50px rgba(16,24,40,.08), 0 2px 8px rgba(16,24,40,.06);
   position:relative; z-index:1;
 }
-.logo-ring{ width:92px; height:92px; margin:0 auto 6px; border-radius:50%;
-  background: conic-gradient(from 215deg, var(--ulink-teal), var(--ulink-orange));
-  opacity:.85; box-shadow:0 8px 20px rgba(16,24,40,.12);
-}
-.form-title{ text-align:center; margin:.5rem 0; font-weight:800 }
-.form-sub{ text-align:center; color:#5f6672; margin-bottom:.5rem }
 .stack{ display:grid; gap:.6rem }
-.input{ width:100%; padding:.7rem .9rem; border-radius:12px; border:1px solid #d6dbe3; background:#f7f9fc }
-.button{ display:inline-flex; align-items:center; justify-content:center; gap:.4rem; padding:.75rem 1rem; border-radius:12px; border:1px solid transparent; cursor:pointer; font-weight:600 }
-.button.primary{ background: linear-gradient(135deg, var(--ulink-orange), #ff8e4c); color:#fff }
-.button.ghost{ background:#fff; border-color:#d6dbe3 }
-.header{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid #e6eaf1; background:rgba(255,255,255,.85); backdrop-filter:blur(6px) }
-.wrap{ max-width:960px; margin:0 auto; padding:1rem }
-.card-lite{ background:#fff; border:1px solid #e6eaf1; border-radius:16px; padding:1rem; box-shadow:0 6px 18px rgba(16,24,40,.06) }
+.form-title{ text-align:center; margin:.5rem 0; font-weight:800 }
+.form-sub{ text-align:center; color:var(--muted); margin-bottom:.5rem }
+
+/* ---------- header / small cards ---------- */
+.header{
+  display:flex; justify-content:space-between; align-items:center; gap:12px;
+  padding:12px 16px; border-bottom:1px solid #e6eaf1;
+  background:rgba(255,255,255,.85); backdrop-filter:blur(6px);
+}
+.card-lite{
+  background:#fff; border:1px solid #e6eaf1; border-radius:16px; padding:1rem;
+  box-shadow:0 6px 18px rgba(16,24,40,.06);
+}
+
+/* =========================================================
+   Brand logo ring (donut) — soft teal → olive → orange
+   =========================================================
+   Usage: <div class="logo-ring"></div>
+          <div class="logo-ring small"></div> (header)
+   --------------------------------------------------------- */
+.logo-ring{
+  /* size & thickness are variables so small variant scales cleanly */
+  --ring-size:92px;
+  --ring-thick:14px;
+  width:var(--ring-size);
+  height:var(--ring-size);
+  margin:0 auto 6px;
+  border-radius:50%;
+  position:relative;
+  /* smooth band around top with teal/orange accents; tweak stops to taste */
+  background:
+    conic-gradient(
+      from 230deg,
+      var(--ulink-teal) 0 18%,
+      #8ca184 45%,
+      #a79a72 68%,
+      var(--ulink-orange) 84% 97%,
+      #8ca184 100%
+    );
+  filter: saturate(1.05);
+  opacity:.95;
+  box-shadow:
+    0 10px 22px rgba(16,24,40,.12),
+    0 0 0 1px rgba(0,0,0,.05) inset;
+}
+/* inner soft white disc */
+.logo-ring::before{
+  content:"";
+  position:absolute;
+  inset:var(--ring-thick);
+  border-radius:50%;
+  background:
+    radial-gradient(closest-side, #f9fbff 0%, #f1f4f9 60%, #eef2f7 70%);
+  box-shadow:
+    inset 0 0 0 1px rgba(0,0,0,.04),
+    0 1px 2px rgba(0,0,0,.12);
+  filter: blur(.2px);
+}
+.logo-ring.small{
+  --ring-size:24px;
+  --ring-thick:4px;
+  margin:0;
+  opacity:.85;
+}
+
+/* =========================================================
+   Chat Console (Dashboard)
+   ========================================================= */
+.console-grid{
+  display:grid; grid-template-columns: 280px 1fr; gap:16px;
+  height: calc(100vh - 120px);
+}
+.sidebar{
+  background:#fff; border:1px solid #e6eaf1; border-radius:14px; padding:12px;
+  display:flex; flex-direction:column; gap:10px;
+}
+.history{
+  flex:1; overflow:auto;
+  display:flex; flex-direction:column; gap:6px;
+}
+.history-item{
+  text-align:left; border:1px solid #e6eaf1; border-radius:10px; padding:8px;
+  background:#fff; cursor:pointer;
+}
+.history-item .title{ font-weight:600; }
+.history-item .meta{ font-size:12px; color:#667085; }
+.history-item.active{
+  outline:2px solid rgba(51,192,197,.35);
+  background:#f6fffe;
+}
+
+.chat{
+  background:#fff; border:1px solid #e6eaf1; border-radius:14px;
+  display:flex; flex-direction:column; min-height:0;
+}
+.chat-header{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:10px 12px; border-bottom:1px solid #e6eaf1;
+}
+.chat-messages{
+  flex:1; overflow:auto; padding:16px; min-height:200px;
+  background:
+    radial-gradient(1000px 700px at 10% 0%, rgba(51,192,197,.08), transparent 70%),
+    radial-gradient(1000px 700px at 100% 0%, rgba(255,122,46,.08), transparent 70%),
+    radial-gradient(600px 400px at 40% 35%, rgba(17,24,39,.04), transparent 60%);
+}
+.bubble{
+  max-width:70%;
+  border:1px solid #e6eaf1; border-radius:14px; padding:10px 12px; margin:8px 0;
+  background:#fff; box-shadow:0 2px 12px rgba(16,24,40,.04);
+}
+.bubble p{ margin:4px 0; white-space:pre-wrap }
+.bubble.user{ margin-left:auto; background:#e8fbf9; border-color:#bff0ea }
+
+.composer{
+  display:flex; gap:10px; padding:12px;
+  border-top:1px solid #e6eaf1; background:#fff;
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 920px){
+  .console-grid{ grid-template-columns: 1fr; height:auto; }
+  .chat-messages{ min-height:320px; }
+}
