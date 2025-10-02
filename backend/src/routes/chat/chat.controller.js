@@ -1,11 +1,14 @@
 const path = require('path');
 const OpenAI = require('openai');
 const fs = require('fs');
+const Pdfkit = require('pdfkit');
+const moment = require('moment');
 
 const { OPENAI_MODEL } = require('../../config');
 const { asssistantMap } = require('../assistant/assistant.controller');
 
 const { fallbackTitle } = require('../../utils/text-util');
+const { formatFileName } = require('../../utils/report-util');
 
 const { findChat, addChat, getAllChats } = require('../../models/chats/chat.model');
 const { addMessage, findMessageByChatId } = require('../../models/messages/message.model');
@@ -172,8 +175,64 @@ async function doGetChatMessages(req, res) {
   });
 }
 
+async function doGenerateConversationHistoryReport(req, res) {
+  const { chatId } = req.params;
+
+  let existingChat = await findChat({ _id: chatId });
+  if (!existingChat) {
+    return res.status(400).json({ 
+      message: 'No Chat History Found.'
+    });
+  }
+
+  const chatMessages = await findMessageByChatId({chatId});
+
+  if (chatMessages && chatMessages.length > 1) {
+    try {
+      const doc = new Pdfkit();
+
+      const fileName = formatFileName(`${existingChat?.title}`);
+      const file = path.join(__dirname, '..', '..', '..', 'reports', fileName);
+
+      const stream = fs.createWriteStream(file);
+
+      doc.pipe(stream);
+
+      chatMessages.forEach(msg => {
+        doc
+          .font('Helvetica-Bold')
+          .text(`(${moment(msg.createdAt).format('DD MMMM YYYY HH:mm A')}) - `, { continued: true })
+          .font('Helvetica-Bold')
+          .text(`${msg.role}:`, { continued: true })
+          .font('Helvetica')
+          .text(` ${msg.content}`)
+          .moveDown(0.5);
+      });
+
+      doc.end();
+
+      stream.on('finish', () => {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}.pdf"`);
+        res.setHeader('Cache-Control', 'no-store');
+        return res.sendFile(file);
+      });
+
+      stream.on('error', (err) => {
+        console.error('PDF write error:', err);
+        res.status(500).json({ message: 'Error writing PDF' });
+      });
+    } catch (err) {
+      return res.status(500).json({
+        message: 'Error on system handling'
+      })
+    }
+  }
+}
+
 module.exports = {
   doStreamChat,
   doGetChatHistory,
-  doGetChatMessages
+  doGetChatMessages,
+  doGenerateConversationHistoryReport
 };
