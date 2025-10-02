@@ -36,7 +36,7 @@ async function doPostNewSession(req, res) {
     if (!await checkExistAsstRecord({_id: assistantId})) {
         return res.status(400).json({ message: 'Assistant ID not exist.'});
     }
-    if (!await checkExistUserRecord({ userId: userId })) {
+    if (!await checkExistUserRecord({ _id: userId })) {
         return res.status(400).json({ message: 'User ID not exist.'});
     }
 
