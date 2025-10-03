@@ -99,13 +99,9 @@ a{ color:inherit; text-decoration:none }
 }
 
 /* =========================================================
-   Brand logo ring (donut) — soft teal → olive → orange
-   =========================================================
-   Usage: <div class="logo-ring"></div>
-          <div class="logo-ring small"></div> (header)
-   --------------------------------------------------------- */
+   Brand logo ring (donut) — teal → olive → orange
+   ========================================================= */
 .logo-ring{
-  /* size & thickness are variables so small variant scales cleanly */
   --ring-size:92px;
   --ring-thick:14px;
   width:var(--ring-size);
@@ -113,7 +109,6 @@ a{ color:inherit; text-decoration:none }
   margin:0 auto 6px;
   border-radius:50%;
   position:relative;
-  /* smooth band around top with teal/orange accents; tweak stops to taste */
   background:
     conic-gradient(
       from 230deg,
@@ -129,7 +124,6 @@ a{ color:inherit; text-decoration:none }
     0 10px 22px rgba(16,24,40,.12),
     0 0 0 1px rgba(0,0,0,.05) inset;
 }
-/* inner soft white disc */
 .logo-ring::before{
   content:"";
   position:absolute;
@@ -150,18 +144,36 @@ a{ color:inherit; text-decoration:none }
 }
 
 /* =========================================================
-   Chat Console (Dashboard)
+   Chat Console — full screen; only History & Messages scroll
    ========================================================= */
-.console-grid{
-  display:grid; grid-template-columns: 280px 1fr; gap:16px;
-  height: calc(100vh - 120px);
+.console-page{
+  height:100vh;        /* lock to viewport */
+  overflow:hidden;     /* page doesn't scroll */
+  padding:12px;
 }
+.console-wrap{
+  max-width:none;
+  width:100%;
+  height:100%;
+  margin:0 auto;
+}
+.console-grid{
+  display:grid;
+  grid-template-columns: 320px 1fr;
+  gap:16px;
+  height:100%;
+}
+
+/* Sidebar (left) */
 .sidebar{
   background:#fff; border:1px solid #e6eaf1; border-radius:14px; padding:12px;
   display:flex; flex-direction:column; gap:10px;
+  min-height:0;          /* allow internal scroller */
 }
 .history{
-  flex:1; overflow:auto;
+  flex:1;
+  min-height:0;
+  overflow:auto;         /* only history scrolls */
   display:flex; flex-direction:column; gap:6px;
 }
 .history-item{
@@ -175,16 +187,21 @@ a{ color:inherit; text-decoration:none }
   background:#f6fffe;
 }
 
+/* Chat (right) */
 .chat{
   background:#fff; border:1px solid #e6eaf1; border-radius:14px;
-  display:flex; flex-direction:column; min-height:0;
+  display:flex; flex-direction:column;
+  min-height:0;          /* allow messages scroller */
 }
 .chat-header{
   display:flex; justify-content:space-between; align-items:center;
   padding:10px 12px; border-bottom:1px solid #e6eaf1;
 }
 .chat-messages{
-  flex:1; overflow:auto; padding:16px; min-height:200px;
+  flex:1;
+  min-height:0;
+  overflow:auto;         /* only messages scroll */
+  padding:16px;
   background:
     radial-gradient(1000px 700px at 10% 0%, rgba(51,192,197,.08), transparent 70%),
     radial-gradient(1000px 700px at 100% 0%, rgba(255,122,46,.08), transparent 70%),
@@ -203,8 +220,7 @@ a{ color:inherit; text-decoration:none }
   border-top:1px solid #e6eaf1; background:#fff;
 }
 
-/* ---------- responsive ---------- */
+/* Responsive */
 @media (max-width: 920px){
-  .console-grid{ grid-template-columns: 1fr; height:auto; }
-  .chat-messages{ min-height:320px; }
+  .console-grid{ grid-template-columns: 1fr; }
 }

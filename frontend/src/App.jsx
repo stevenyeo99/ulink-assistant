@@ -1,7 +1,9 @@
+import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+
 import Login from "./pages/Login.jsx";
 import Signup from "./pages/Signup.jsx";
-import Dashboard from "./pages/Dashboard.jsx";
+import Dashboard from "./pages/Dashboard.jsx"; // <-- ensure .jsx here
 import { getToken } from "./api.js";
 
 function Protected({ children }) {
@@ -22,7 +24,8 @@ export default function App() {
             </Protected>
           }
         />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        {/* Default to dashboard after login */}
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>
   );

@@ -3,7 +3,7 @@
 // ====== Config ======
 const API_BASE =
   import.meta.env.VITE_API_BASE?.trim() ||
-  "http://127.0.0.1:3000";
+  "http://127.0.0.1:10001";
 
 // Allow overriding paths via .env if your backend differs
 const LOGIN_PATH    = import.meta.env.VITE_LOGIN_PATH    || "/api/users/login";
