@@ -50,7 +50,6 @@ export async function login(email, password) {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
-  // Expect { token, user } OR { token, username }
   const token = data.token;
   const user  = data.user || (data.username ? { email, username: data.username } : { email });
   if (!token) throw new Error("No token in response");
@@ -74,13 +73,62 @@ export async function fetchProfile() {
   });
 }
 
-// ====== Chat console (frontend-only, localStorage) ======
-export const chatbots = [
+/* ====================================================================
+   Chat console (frontend-only, localStorage) + Editable bot names
+   ==================================================================== */
+
+// Default bot registry (do not mutate; use labels to rename)
+const DEFAULT_BOTS = [
   { key: "sg_doctor",     name: "SG Doctor Recommendation" },
   { key: "provider_tool", name: "Recommended Provider Search Tool" },
   { key: "generic",       name: "Generic Assistant" },
 ];
 
+// Bot label storage (user edits)
+const LS_BOT_LABELS = "ulink.chat.botLabels";
+function loadBotLabels() {
+  try { return JSON.parse(localStorage.getItem(LS_BOT_LABELS) || "{}"); }
+  catch { return {}; }
+}
+function saveBotLabels(map) {
+  localStorage.setItem(LS_BOT_LABELS, JSON.stringify(map || {}));
+}
+
+// Public helpers for UI
+export function listChatbots(filter = "") {
+  const labels = loadBotLabels();
+  const out = DEFAULT_BOTS.map(b => ({
+    key: b.key,
+    name: labels[b.key]?.trim() || b.name,
+    defaultName: b.name,
+  }));
+  if (!filter) return out;
+  const q = filter.toLowerCase();
+  return out.filter(b =>
+    b.name.toLowerCase().includes(q) ||
+    b.defaultName.toLowerCase().includes(q) ||
+    b.key.toLowerCase().includes(q)
+  );
+}
+export function getBotName(key) {
+  const lbl = loadBotLabels()[key];
+  if (lbl && lbl.trim()) return lbl.trim();
+  return DEFAULT_BOTS.find(b => b.key === key)?.name || "Chatbot";
+}
+export function setBotName(key, newName) {
+  const map = loadBotLabels();
+  const trimmed = String(newName || "").trim();
+  if (!trimmed) {
+    // reset to default
+    delete map[key];
+  } else {
+    map[key] = trimmed;
+  }
+  saveBotLabels(map);
+  return listChatbots(); // convenience return
+}
+
+// ====== Chat sessions (localStorage) ======
 const LS_CHAT = "ulink.chat.v1";
 const uuid = () => (globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2));
 
@@ -131,7 +179,7 @@ export function appendMessage(sessionId, role, content) {
 // Demo reply for now — replace with real backend call later.
 export async function sendMessage(botKey, sessionId, text) {
   appendMessage(sessionId, "user", text);
-  const botName = chatbots.find(b => b.key === botKey)?.name || "Bot";
+  const botName = getBotName(botKey); // <— uses edited label
   const reply = `[${botName}] (demo) You said: ${text}`;
   appendMessage(sessionId, "assistant", reply);
   return reply;
@@ -140,7 +188,7 @@ export async function sendMessage(botKey, sessionId, text) {
 export function exportSessionText(sessionId) {
   const session = getSession(sessionId);
   if (!session) return "";
-  const botName = chatbots.find(b => b.key === session.botKey)?.name || "Chatbot";
+  const botName = getBotName(session.botKey);
   const lines = [
     `# Chat with ${botName}`,
     `Started: ${new Date(session.createdAt).toLocaleString()}`,

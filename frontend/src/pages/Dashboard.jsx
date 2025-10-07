@@ -1,18 +1,23 @@
+// src/pages/Dashboard.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { jsPDF } from "jspdf";
 
 import {
   getToken, clearAuth,
-  chatbots,
+  listChatbots, getBotName, setBotName,
   listSessions, createSession, getSession,
-  sendMessage, exportSessionText
+  sendMessage
 } from "../api.js";
 
 export default function Dashboard() {
   const navigate = useNavigate();
-
   useEffect(() => { if (!getToken()) navigate("/login"); }, [navigate]);
+
+  // bots + filterable UI
+  const [bots, setBots] = useState(() => listChatbots());
+  const [botFilter, setBotFilter] = useState("");
+  const filteredBots = useMemo(() => listChatbots(botFilter), [botFilter]);
 
   const [botKey, setBotKey] = useState("");
   const [sessions, setSessions] = useState([]);
@@ -25,9 +30,7 @@ export default function Dashboard() {
     setSessions(listSessions(botKey));
   }, [botKey]);
 
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [sessionId, sessions]);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [sessionId, sessions]);
 
   const currentSession = useMemo(
     () => (sessionId ? getSession(sessionId) : null),
@@ -51,25 +54,21 @@ export default function Dashboard() {
     setSessions(listSessions(botKey));
   }
 
-  function onDownloadTxt() {
-    if (!sessionId) return;
-    const text = exportSessionText(sessionId);
-    const blob = new Blob([text], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `chat_${sessionId}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+  function onRenameBot() {
+    if (!botKey) return;
+    const currentName = getBotName(botKey);
+    const next = prompt("Rename chatbot (leave blank to reset to default):", currentName);
+    if (next === null) return; // cancel
+    setBotName(botKey, next);
+    setBots(listChatbots(botFilter));
   }
 
   function onDownloadPdf() {
     if (!sessionId) return;
-
     const s = getSession(sessionId);
     if (!s) return;
 
-    const botName = chatbots.find(b => b.key === s.botKey)?.name || "Chatbot";
+    const botName = getBotName(s.botKey);
     const title = s.title || "Conversation";
     const start = new Date(s.createdAt).toLocaleString();
 
@@ -89,16 +88,18 @@ export default function Dashboard() {
     doc.setDrawColor(220); doc.line(margin, y, pageW - margin, y); y += 14;
 
     doc.setFontSize(12);
-    const addLine = (line) => {
-      if (y > pageH - margin) { doc.addPage(); y = margin; }
-      doc.text(line, margin, y); y += 16;
+    const addBlock = (text) => {
+      const lines = doc.splitTextToSize(String(text || ""), maxW);
+      for (const line of lines) {
+        if (y > pageH - margin) { doc.addPage(); y = margin; }
+        doc.text(line, margin, y); y += 16;
+      }
     };
 
-    s.messages.forEach(m => {
+    (s.messages || []).forEach(m => {
       const who = m.role === "user" ? "USER" : "ASSISTANT";
-      doc.setFont("helvetica", "bold"); addLine(`${who}:`);
-      doc.setFont("helvetica", "normal");
-      doc.splitTextToSize(String(m.content || ""), maxW).forEach(addLine);
+      doc.setFont("helvetica", "bold"); addBlock(`${who}:`);
+      doc.setFont("helvetica", "normal"); addBlock(m.content);
       y += 6;
     });
 
@@ -114,16 +115,34 @@ export default function Dashboard() {
     <div className="console-page">
       <div className="console-wrap">
         <div className="console-grid">
+          {/* Left panel: bot dropdown + history */}
           <aside className="sidebar">
-            <div>
+            <div className="stack">
               <label style={{ fontWeight: 700 }}>Chatbot</label>
-              <select className="input" value={botKey} onChange={e => setBotKey(e.target.value)}>
+              <input
+                className="input"
+                placeholder="Filter chatbots…"
+                value={botFilter}
+                onChange={e => setBotFilter(e.target.value)}
+              />
+              <select
+                className="input"
+                value={botKey}
+                onChange={e => setBotKey(e.target.value)}
+              >
                 <option value="">— Select a chatbot —</option>
-                {chatbots.map(b => <option key={b.key} value={b.key}>{b.name}</option>)}
+                {filteredBots.map(b => (
+                  <option key={b.key} value={b.key}>{b.name}</option>
+                ))}
               </select>
-              <button className="button ghost" style={{ marginTop: 8 }} disabled={!botKey} onClick={onNewChat}>
-                New chat
-              </button>
+              <div className="row" style={{ justifyContent: "space-between" }}>
+                <button className="button ghost" disabled={!botKey} onClick={onNewChat}>
+                  New chat
+                </button>
+                <button className="button ghost" disabled={!botKey} onClick={onRenameBot}>
+                  Rename
+                </button>
+              </div>
             </div>
 
             <div style={{ fontWeight: 700, marginTop: 10 }}>History</div>
@@ -141,18 +160,16 @@ export default function Dashboard() {
             </div>
           </aside>
 
+          {/* Right panel: chat window */}
           <section className="chat">
             <div className="chat-header">
               <div className="row" style={{ gap: 8, alignItems: "center" }}>
                 <div className="logo-ring small" />
-                <strong>{chatbots.find(b => b.key === botKey)?.name || "Pick a chatbot"}</strong>
+                <strong>{botKey ? getBotName(botKey) : "Pick a chatbot"}</strong>
               </div>
               <div className="row" style={{ gap: 8 }}>
                 <button className="button ghost" onClick={() => { clearAuth(); navigate("/login"); }}>
                   Logout
-                </button>
-                <button className="button ghost" disabled={!sessionId} onClick={onDownloadTxt}>
-                  Download .txt
                 </button>
                 <button className="button ghost" disabled={!sessionId} onClick={onDownloadPdf}>
                   Download PDF
@@ -168,7 +185,9 @@ export default function Dashboard() {
               ) : (
                 (currentSession?.messages || []).map(m => (
                   <div key={m.id} className={"bubble " + (m.role === "user" ? "user" : "assistant")}>
-                    <p>{m.content}</p>
+                    <div className="bubble-inner">
+                      <p>{m.content}</p>
+                    </div>
                   </div>
                 ))
               )}
@@ -177,13 +196,13 @@ export default function Dashboard() {
 
             <form className="composer" onSubmit={onSend}>
               <input
-                className="input"
+                className="input input-message"
                 placeholder={!botKey ? "Choose a chatbot first" : "Type a message…"}
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 disabled={!botKey || !sessionId}
               />
-              <button className="button primary" disabled={!botKey || !sessionId || !input.trim()} type="submit">
+              <button className="button primary send-btn" disabled={!botKey || !sessionId || !input.trim()} type="submit">
                 Send
               </button>
             </form>
