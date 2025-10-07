@@ -118,19 +118,20 @@ export default function Dashboard() {
           {/* Left panel: bot dropdown + history */}
           <aside className="sidebar">
             <div className="stack">
-              <label style={{ fontWeight: 700 }}>Chatbot</label>
-              <input
+              <label style={{ fontWeight: 700 }}>Assistant</label>
+              {/* TODO: not show this features at DAY1 */}
+              {/* <input
                 className="input"
                 placeholder="Filter chatbots…"
                 value={botFilter}
                 onChange={e => setBotFilter(e.target.value)}
-              />
+              /> */}
               <select
                 className="input"
                 value={botKey}
                 onChange={e => setBotKey(e.target.value)}
               >
-                <option value="">— Select a chatbot —</option>
+                <option value="">— Select a Assistant —</option>
                 {filteredBots.map(b => (
                   <option key={b.key} value={b.key}>{b.name}</option>
                 ))}
@@ -139,9 +140,10 @@ export default function Dashboard() {
                 <button className="button ghost" disabled={!botKey} onClick={onNewChat}>
                   New chat
                 </button>
-                <button className="button ghost" disabled={!botKey} onClick={onRenameBot}>
+                {/* TODO: not show this features at DAY1 */}
+                {/* <button className="button ghost" disabled={!botKey} onClick={onRenameBot}>
                   Rename
-                </button>
+                </button> */}
               </div>
             </div>
 
@@ -165,7 +167,7 @@ export default function Dashboard() {
             <div className="chat-header">
               <div className="row" style={{ gap: 8, alignItems: "center" }}>
                 <div className="logo-ring small" />
-                <strong>{botKey ? getBotName(botKey) : "Pick a chatbot"}</strong>
+                <strong>{botKey ? getBotName(botKey) : "Pick a Assistant"}</strong>
               </div>
               <div className="row" style={{ gap: 8 }}>
                 <button className="button ghost" onClick={() => { clearAuth(); navigate("/login"); }}>
@@ -179,7 +181,7 @@ export default function Dashboard() {
 
             <div className="chat-messages">
               {!botKey ? (
-                <div className="muted">Select a chatbot to start.</div>
+                <div className="muted">Select a Assistant to start.</div>
               ) : !sessionId ? (
                 <div className="muted">Create a new chat or pick one from history.</div>
               ) : (
