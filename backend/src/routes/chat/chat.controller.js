@@ -57,6 +57,23 @@ function loadProjectKey(assistantId) {
   return projectKey;
 }
 
+async function doCreateNewChat(chatConfig) {
+
+  const { userId, assistantId, sessionId, title } = chatConfig;
+  
+  let existingChat = await findChat({ sessionId });
+  if (!existingChat) {
+    existingChat = await addChat({
+      title,
+      userId,
+      sessionId,
+      assistantId
+    });
+  }
+
+  return existingChat;
+}
+
 async function doStreamChat(req, res) {
   try {
     const { userId, assistantId, sessionId, message } = req.body;
@@ -64,19 +81,8 @@ async function doStreamChat(req, res) {
     const vectorStoreId = loadVectorId(assistantId);
     const projectApiKey = loadProjectKey(assistantId);
 
-    let existingChat = await findChat({ sessionId });
-    let history = [];
-    if (!existingChat) {
-      const title = fallbackTitle(message);
-      existingChat = await addChat({
-        title,
-        userId,
-        sessionId,
-        assistantId,
-      });
-      
-      history = await findMessageByChatId(existingChat?._id);
-    }
+    let existingChat = await doCreateNewChat({ userId, assistantId, sessionId });
+    let history = await findMessageByChatId(existingChat?._id);
 
     // SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
@@ -234,5 +240,8 @@ module.exports = {
   doStreamChat,
   doGetChatHistory,
   doGetChatMessages,
-  doGenerateConversationHistoryReport
+  doGenerateConversationHistoryReport,
+
+  // util
+  doCreateNewChat
 };

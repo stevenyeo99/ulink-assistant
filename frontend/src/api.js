@@ -1,14 +1,29 @@
-// src/api.js
+import {
+  API_BASE,
+  LOGIN_PATH,
+  REGISTER_PATH,
+  PROFILE_PATH,
+  GET_LIST_ASSISTANT_PATH,
+  POST_SESSION_PATH,
+  POST_STREAM_CHAT_PATH,
+  GET_LIST_HISTORY_PATH,
+  GET_LIST_MESSAGE_PER_SESSION_PATH,
+  POST_CHAT_HIST_REPORT_PATH
+} from './config';
 
-// ====== Config ======
-const API_BASE =
-  import.meta.env.VITE_API_BASE?.trim() ||
-  "http://127.0.0.1:10001";
+// integration
+import {
+  getListOfAssistant
+} from './integrations/assistant-integration';
 
-// Allow overriding paths via .env if your backend differs
-const LOGIN_PATH    = import.meta.env.VITE_LOGIN_PATH    || "/api/users/login";
-const REGISTER_PATH = import.meta.env.VITE_REGISTER_PATH || "/api/users/register";
-const PROFILE_PATH  = import.meta.env.VITE_PROFILE_PATH  || "/api/users/me";
+import {
+  postNewSession
+} from './integrations/session-integration';
+
+import {
+  postChatStreamingAPI
+} from './integrations/chat-integration';
+
 
 // ====== Small HTTP helper ======
 async function request(path, opts = {}) {
@@ -34,11 +49,20 @@ export function setAuth(token, user) {
   if (token) localStorage.setItem(LS_TOKEN, token);
   if (user)  localStorage.setItem(LS_USER, JSON.stringify(user));
 }
-export function getToken() { return localStorage.getItem(LS_TOKEN) || ""; }
-export function getUser() {
-  try { return JSON.parse(localStorage.getItem(LS_USER) || "null"); }
-  catch { return null; }
+
+export function getToken() { 
+  return localStorage.getItem(LS_TOKEN) || ""; 
 }
+
+export function getUser() {
+  try { 
+    return JSON.parse(localStorage.getItem(LS_USER) || "null"); 
+  }
+  catch { 
+    return null; 
+  }
+}
+
 export function clearAuth() {
   localStorage.removeItem(LS_TOKEN);
   localStorage.removeItem(LS_USER);
@@ -73,16 +97,11 @@ export async function fetchProfile() {
   });
 }
 
+
+
 /* ====================================================================
    Chat console (frontend-only, localStorage) + Editable bot names
    ==================================================================== */
-
-// Default bot registry (do not mutate; use labels to rename)
-const DEFAULT_BOTS = [
-  { key: "sg_doctor",     name: "SG Doctor Recommendation" },
-  { key: "provider_tool", name: "Recommended Provider Search Tool" },
-  { key: "generic",       name: "Generic Assistant" },
-];
 
 // Bot label storage (user edits)
 const LS_BOT_LABELS = "ulink.chat.botLabels";
@@ -95,26 +114,39 @@ function saveBotLabels(map) {
 }
 
 // Public helpers for UI
-export function listChatbots(filter = "") {
+export async function listChatbots(filter = "") {
   const labels = loadBotLabels();
-  const out = DEFAULT_BOTS.map(b => ({
-    key: b.key,
-    name: labels[b.key]?.trim() || b.name,
-    defaultName: b.name,
-  }));
+
+  const listOfAssistant = await getListOfAssistant();
+
+  const out = listOfAssistant.map(b => {
+    const assistMap = (
+      {
+        key: b._id,
+        name: labels[b.key]?.trim() || b.displayName,
+        defaultName: b.displayName,
+      }
+    );
+
+    return assistMap;
+  });
+
   if (!filter) return out;
   const q = filter.toLowerCase();
+
   return out.filter(b =>
     b.name.toLowerCase().includes(q) ||
     b.defaultName.toLowerCase().includes(q) ||
     b.key.toLowerCase().includes(q)
   );
 }
-export function getBotName(key) {
+
+export function getBotName(key, assistantList = []) {
   const lbl = loadBotLabels()[key];
   if (lbl && lbl.trim()) return lbl.trim();
-  return DEFAULT_BOTS.find(b => b.key === key)?.name || "Chatbot";
+  return assistantList.find(b => b.key === key)?.name || "Chatbot";
 }
+
 export function setBotName(key, newName) {
   const map = loadBotLabels();
   const trimmed = String(newName || "").trim();
@@ -133,27 +165,45 @@ const LS_CHAT = "ulink.chat.v1";
 const uuid = () => (globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2));
 
 function loadState() {
-  try { return JSON.parse(localStorage.getItem(LS_CHAT)) || { sessions: [] }; }
-  catch { return { sessions: [] }; }
+  try { 
+    return JSON.parse(localStorage.getItem(LS_CHAT)) || { sessions: [] }; 
+  }
+  catch { 
+    return { 
+      sessions: [] 
+    }; 
+  }
 }
-function saveState(state) { localStorage.setItem(LS_CHAT, JSON.stringify(state)); }
+
+function saveState(state) { 
+  localStorage.setItem(LS_CHAT, JSON.stringify(state)); 
+}
 
 export function listSessions(botKey) {
   return loadState().sessions
     .filter(s => s.botKey === botKey)
-    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    .sort((a, b) => (new Date(b.updatedAt)) - (new Date(a.updatedAt)));
 }
 
-export function createSession(botKey) {
+export async function createSession(assistantId) {
   const state = loadState();
+  const authUser = getUser();
+
+  // Call Create Session API
+  const newSessionBE = await postNewSession({
+    assistantId,
+    userId: authUser?.id
+  });
+
   const session = {
-    id: uuid(),
-    botKey,
-    title: "New chat",
+    id: newSessionBE?.sessionId,
+    botKey: assistantId,
+    title: newSessionBE?.title,
     messages: [],
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
+    createdAt: newSessionBE?.createdAt,
+    updatedAt: newSessionBE?.updatedAt
   };
+
   state.sessions.push(session);
   saveState(state);
   return session;
@@ -179,9 +229,20 @@ export function appendMessage(sessionId, role, content) {
 // Demo reply for now — replace with real backend call later.
 export async function sendMessage(botKey, sessionId, text) {
   appendMessage(sessionId, "user", text);
-  const botName = getBotName(botKey); // <— uses edited label
-  const reply = `[${botName}] (demo) You said: ${text}`;
+  
+  const authUser = getUser();
+  const userId = authUser?.id;
+
+  // Call Chat Stream API
+  const reply = await postChatStreamingAPI({
+    assistantId: botKey,
+    sessionId,
+    message: text,
+    userId
+  });
+  
   appendMessage(sessionId, "assistant", reply);
+  
   return reply;
 }
 

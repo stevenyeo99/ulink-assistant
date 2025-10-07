@@ -1,8 +1,10 @@
 const mongoose = require('mongoose');
+const moment = require('moment');
 
 const { getSessionBySID, saveSession } = require('../../models/sessions/session.model');
 const { checkExistAsstRecord } = require('../../models/assistants/assistant.model');
 const { checkExistUserRecord } = require('../../models/users/user.model');
+const { doCreateNewChat } = require('../chat/chat.controller');
 
 async function doGetSessionBySID(req, res) {
 
@@ -48,10 +50,17 @@ async function doPostNewSession(req, res) {
 
     try {
         await saveSession(newSession);
+        const chat = await doCreateNewChat({
+            assistantId,
+            userId,
+            sessionId,
+            title: `(${moment(new Date()).format('DD MMMM YYYY HH:mm A')}) - New Chat`
+        });
+
         return res.status(201).json({ 
-            message: 'Succesfully Generated Session Key',
+            message: 'Succesfully Created New Chat Session',
             data: {
-                sessionId: sessionId
+                chat
             }
         });
     } catch (error) {

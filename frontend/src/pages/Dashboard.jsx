@@ -5,7 +5,7 @@ import { jsPDF } from "jspdf";
 
 import {
   getToken, clearAuth,
-  listChatbots, getBotName, setBotName,
+  getBotName, listChatbots,
   listSessions, createSession, getSession,
   sendMessage
 } from "../api.js";
@@ -15,9 +15,9 @@ export default function Dashboard() {
   useEffect(() => { if (!getToken()) navigate("/login"); }, [navigate]);
 
   // bots + filterable UI
-  const [bots, setBots] = useState(() => listChatbots());
-  const [botFilter, setBotFilter] = useState("");
-  const filteredBots = useMemo(() => listChatbots(botFilter), [botFilter]);
+  // const [bots, setBots] = useState(() => listChatbots());
+  // const [botFilter, setBotFilter] = useState("");
+  const [filteredBots, setFilteredBots] = useState([]);
 
   const [botKey, setBotKey] = useState("");
   const [sessions, setSessions] = useState([]);
@@ -30,6 +30,12 @@ export default function Dashboard() {
     setSessions(listSessions(botKey));
   }, [botKey]);
 
+  useEffect(() => {
+     (async () => {
+        setFilteredBots(await listChatbots());
+      })();
+  }, []);
+
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [sessionId, sessions]);
 
   const currentSession = useMemo(
@@ -37,9 +43,9 @@ export default function Dashboard() {
     [sessionId, sessions]
   );
 
-  function onNewChat() {
+  async function onNewChat() {
     if (!botKey) return;
-    const s = createSession(botKey);
+    const s = await createSession(botKey);
     setSessions(listSessions(botKey));
     setSessionId(s.id);
     setInput("");
@@ -54,14 +60,14 @@ export default function Dashboard() {
     setSessions(listSessions(botKey));
   }
 
-  function onRenameBot() {
-    if (!botKey) return;
-    const currentName = getBotName(botKey);
-    const next = prompt("Rename chatbot (leave blank to reset to default):", currentName);
-    if (next === null) return; // cancel
-    setBotName(botKey, next);
-    setBots(listChatbots(botFilter));
-  }
+  // function onRenameBot() {
+  //   if (!botKey) return;
+  //   const currentName = getBotName(botKey);
+  //   const next = prompt("Rename chatbot (leave blank to reset to default):", currentName);
+  //   if (next === null) return; // cancel
+  //   setBotName(botKey, next);
+  //   setBots(listChatbots(botFilter));
+  // }
 
   function onDownloadPdf() {
     if (!sessionId) return;
@@ -110,6 +116,8 @@ export default function Dashboard() {
     const safeTitle = title.replace(/[^\w\s-]+/g, "").slice(0, 40).trim().replace(/\s+/g, "_");
     doc.save(`${safeTitle || "chat"}_${sessionId}.pdf`);
   }
+
+  const btnSendDisabled = (!botKey || !sessionId || !input.trim());
 
   return (
     <div className="console-page">
@@ -167,7 +175,7 @@ export default function Dashboard() {
             <div className="chat-header">
               <div className="row" style={{ gap: 8, alignItems: "center" }}>
                 <div className="logo-ring small" />
-                <strong>{botKey ? getBotName(botKey) : "Pick a Assistant"}</strong>
+                <strong>{botKey ? getBotName(botKey, filteredBots) : "Pick a Assistant"}</strong>
               </div>
               <div className="row" style={{ gap: 8 }}>
                 <button className="button ghost" onClick={() => { clearAuth(); navigate("/login"); }}>
@@ -199,14 +207,13 @@ export default function Dashboard() {
             <form className="composer" onSubmit={onSend}>
               <input
                 className="input input-message"
-                placeholder={!botKey ? "Choose a chatbot first" : "Type a message…"}
+                placeholder={!botKey ? "Choose a Assistant first" : "Type a message…"}
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 disabled={!botKey || !sessionId}
               />
-              <button className="button primary send-btn" disabled={!botKey || !sessionId || !input.trim()} type="submit">
-                Send
-              </button>
+
+              <button className="button primary send-btn" disabled={btnSendDisabled} type="submit">Send</button>
             </form>
           </section>
         </div>
