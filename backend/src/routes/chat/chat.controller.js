@@ -3,6 +3,7 @@ const OpenAI = require('openai');
 const fs = require('fs');
 const Pdfkit = require('pdfkit');
 const moment = require('moment');
+const JsPdf = require('jspdf');
 
 const { OPENAI_MODEL } = require('../../config');
 const { asssistantMap } = require('../assistant/assistant.controller');
@@ -10,8 +11,9 @@ const { asssistantMap } = require('../assistant/assistant.controller');
 const { fallbackTitle } = require('../../utils/text-util');
 const { formatFileName } = require('../../utils/report-util');
 
-const { findChat, addChat, getAllChats } = require('../../models/chats/chat.model');
+const { findChat, addChat, getAllChats, saveChat } = require('../../models/chats/chat.model');
 const { addMessage, findMessageByChatId } = require('../../models/messages/message.model');
+const { getAsisstantKeyById } = require('../../models/assistants/assistant.model');
 
 
 function loadSystemPrompt(assistantId) {
@@ -41,6 +43,7 @@ function loadVectorId(assistantId) {
     const asstConf = asssistantMap.get(assistantId);
 
     vectorId = asstConf?.vectorStoreId;
+    vectorId = vectorId.split(',');
   }
 
   return vectorId;
@@ -78,11 +81,11 @@ async function doStreamChat(req, res) {
   try {
     const { userId, assistantId, sessionId, message } = req.body;
     const systemPromptIns = loadSystemPrompt(assistantId);
-    const vectorStoreId = loadVectorId(assistantId);
+    const vectorStoreIds = loadVectorId(assistantId);
     const projectApiKey = loadProjectKey(assistantId);
 
     let existingChat = await doCreateNewChat({ userId, assistantId, sessionId });
-    let history = await findMessageByChatId(existingChat?._id);
+    let history = await findMessageByChatId({ chatId: existingChat._id}, {createdAt: 0, chatId: 0, updatedAt: 0});
 
     // SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
@@ -105,10 +108,10 @@ async function doStreamChat(req, res) {
         stream: true,
     };
 
-    if (vectorStoreId) {
+    if (vectorStoreIds) {
       clientConfig['tools'] = [{
           "type": "file_search",
-          "vector_store_ids": [vectorStoreId]
+          "vector_store_ids": vectorStoreIds
       }];
     }
 
@@ -150,7 +153,7 @@ async function doStreamChat(req, res) {
 }
 
 async function doGetChatHistory(req, res) {
-  const { userId, skip, limit } = req.query;
+  const { assistantId, userId } = req.query;
 
   if (!userId) {
     return res.status(400).json({
@@ -158,7 +161,7 @@ async function doGetChatHistory(req, res) {
     });
   }
   
-  const chatHistories = await getAllChats({userId}, skip, limit);
+  const chatHistories = await getAllChats({ userId, assistantId });
 
   return res.status(200).json({
     data: chatHistories
@@ -182,20 +185,21 @@ async function doGetChatMessages(req, res) {
 }
 
 async function doGenerateConversationHistoryReport(req, res) {
-  const { chatId } = req.params;
+  const { sessionId } = req.params;
 
-  let existingChat = await findChat({ _id: chatId });
+  let existingChat = await findChat({ sessionId });
   if (!existingChat) {
     return res.status(400).json({ 
       message: 'No Chat History Found.'
     });
   }
 
-  const chatMessages = await findMessageByChatId({chatId});
+  const chatMessages = await findMessageByChatId({chatId: existingChat._id});
+  const assistant = await getAsisstantKeyById(existingChat.assistantId);
 
   if (chatMessages && chatMessages.length > 1) {
     try {
-      const doc = new Pdfkit();
+      const doc = new Pdfkit({ size: "A4", margin: 48 });
 
       const fileName = formatFileName(`${existingChat?.title}`);
       const file = path.join(__dirname, '..', '..', '..', 'reports', fileName);
@@ -204,16 +208,30 @@ async function doGenerateConversationHistoryReport(req, res) {
 
       doc.pipe(stream);
 
-      chatMessages.forEach(msg => {
-        doc
-          .font('Helvetica-Bold')
-          .text(`(${moment(msg.createdAt).format('DD MMMM YYYY HH:mm A')}) - `, { continued: true })
-          .font('Helvetica-Bold')
-          .text(`${msg.role}:`, { continued: true })
-          .font('Helvetica')
-          .text(` ${msg.content}`)
-          .moveDown(0.5);
-      });
+      const margin = 48;
+      const pageW = doc.page.width;
+      const pageH = doc.page.height;
+      const maxW = pageW - margin * 2;
+
+      doc.font("Helvetica-Bold").fontSize(16).text(`Chat with ${assistant?.displayName || "Assistant"}`, margin);
+      doc.moveDown(0.6);
+      doc.font("Helvetica").fontSize(11).text(`Started: ${moment(existingChat.createdAt).format('DD/MM/YYYY HH:MM')}`, margin);
+      doc.moveDown(0.4);
+      doc.moveTo(margin, doc.y).lineTo(pageW - margin, doc.y).strokeColor("#dddddd").stroke();
+      doc.moveDown(0.6);
+
+      doc.fontSize(12);
+      for (const m of (chatMessages || [])) {
+        doc.font('Helvetica-Bold').text(`(${moment(m.createdAt).format('DD/MM/YYYY HH:MM')}) - `, { continued: true });
+        doc.font("Helvetica-Bold").text(m.role === "user" ? "User:" : "Assistant:", { width: maxW });
+        doc.moveDown(0.2);
+        doc.font("Helvetica").text(String(m.content ?? ""), { width: maxW });
+        doc.moveDown(0.7);
+        if (doc.y > pageH - margin) doc.addPage();
+      }
+
+      doc.moveDown(1);
+      doc.fontSize(10).fillColor("#777777").text("Generated by Ulink Assist", margin, pageH - margin, { lineBreak: false });
 
       doc.end();
 
@@ -229,10 +247,41 @@ async function doGenerateConversationHistoryReport(req, res) {
         res.status(500).json({ message: 'Error writing PDF' });
       });
     } catch (err) {
+      console.log(err);
       return res.status(500).json({
         message: 'Error on system handling'
       })
     }
+  }
+}
+
+async function doUpdateChatTitle(req, res) {
+
+  const { sessionId, title } = req.body;
+
+  try {
+    let existingChat = await findChat({ sessionId });
+    
+    if (!existingChat) {
+      return res.status(400).json({
+        message: 'Chat Session does not exist.'
+      });
+    }
+    
+    if (existingChat) {
+      existingChat.title = title;
+
+      await saveChat(existingChat);
+    }
+
+    return res.status(200).json({
+      message: 'Succesfully Updated Chat Session Title',
+      data: existingChat
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Failed to update chat title.'
+    });
   }
 }
 
@@ -241,6 +290,7 @@ module.exports = {
   doGetChatHistory,
   doGetChatMessages,
   doGenerateConversationHistoryReport,
+  doUpdateChatTitle,
 
   // util
   doCreateNewChat

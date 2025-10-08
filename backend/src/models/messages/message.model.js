@@ -4,10 +4,11 @@ async function addMessage(message) {
     await Message.create(message);
 }
 
-async function findMessageByChatId(filter) {
+async function findMessageByChatId(filter, excludeField) {
     return await Message.find(filter, {
         _id: 0,
-        __v: 0
+        __v: 0,
+        ...excludeField
     })
     .lean()
     .sort({ timestamp: 1 });

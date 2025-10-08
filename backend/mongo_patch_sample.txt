@@ -1,0 +1,11 @@
+// setting assistant mongodb level
+db.assistants.updateOne({
+    code: 'my_doctor_recommendation'
+}, {
+    $set: {
+        enabled: true,
+        useDocs: true,
+        apiKey: '****',
+        systemPromptFile: 'my_doctor_recommendation_prompt.md'
+    }
+});

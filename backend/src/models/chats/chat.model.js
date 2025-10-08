@@ -1,3 +1,5 @@
+const { Types: { ObjectId } } = require('mongoose');
+
 const Chat = require('./chat.mongo');
 
 async function findChat(filter) {
@@ -24,17 +26,47 @@ async function saveChat(chat) {
     );
 }
 
-async function getAllChats(filter = {}, skip, limit) {
-    return await Chat.find(filter, {
-        __v: 0
-    })
-    .sort({ updatedAt: -1 })
-    .skip(skip)
-    .limit(limit);
+async function getAllChats({userId, assistantId}) {
+    return await Chat.aggregate([ 
+        {
+            $match: {
+                $expr: {
+                    $and: [
+                        {
+                            $eq: ['$userId', new ObjectId(userId)]
+                        },
+                        {
+                            $eq: ['$assistantId', new ObjectId(assistantId)]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            $lookup: {
+                from: 'messages',
+                let: {
+                    chatId: '$_id'
+                },
+                pipeline: [
+                    { $match: { $expr: { $eq: ['$chatId', '$$chatId'] } } },
+                    { $sort: { createdAt: 1 } },
+                    { $project: { _id: 0, role: 1, content: 1, createdAt: 1 } }
+                ],
+                as: 'messages'
+            }
+        },
+        {
+            $sort: {
+                updatedAt: -1
+            }
+        },
+    ]);
 }
 
 module.exports = {
     findChat,
     addChat,
-    getAllChats
+    getAllChats,
+    saveChat
 };

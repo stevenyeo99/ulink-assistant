@@ -3,12 +3,6 @@ import {
   LOGIN_PATH,
   REGISTER_PATH,
   PROFILE_PATH,
-  GET_LIST_ASSISTANT_PATH,
-  POST_SESSION_PATH,
-  POST_STREAM_CHAT_PATH,
-  GET_LIST_HISTORY_PATH,
-  GET_LIST_MESSAGE_PER_SESSION_PATH,
-  POST_CHAT_HIST_REPORT_PATH
 } from './config';
 
 // integration
@@ -21,7 +15,10 @@ import {
 } from './integrations/session-integration';
 
 import {
-  postChatStreamingAPI
+  doUpdateChatTitle,
+  postChatStreamingAPI,
+  retrieveChatHistory,
+  doDownloadChatHistReport
 } from './integrations/chat-integration';
 
 
@@ -66,6 +63,8 @@ export function getUser() {
 export function clearAuth() {
   localStorage.removeItem(LS_TOKEN);
   localStorage.removeItem(LS_USER);
+  localStorage.removeItem(LS_CHAT);
+  localStorage.removeItem(LS_BOT_LABELS);
 }
 
 // ====== Auth API ======
@@ -109,6 +108,7 @@ function loadBotLabels() {
   try { return JSON.parse(localStorage.getItem(LS_BOT_LABELS) || "{}"); }
   catch { return {}; }
 }
+
 function saveBotLabels(map) {
   localStorage.setItem(LS_BOT_LABELS, JSON.stringify(map || {}));
 }
@@ -162,7 +162,6 @@ export function setBotName(key, newName) {
 
 // ====== Chat sessions (localStorage) ======
 const LS_CHAT = "ulink.chat.v1";
-const uuid = () => (globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2));
 
 function loadState() {
   try { 
@@ -179,10 +178,38 @@ function saveState(state) {
   localStorage.setItem(LS_CHAT, JSON.stringify(state)); 
 }
 
-export function listSessions(botKey) {
-  return loadState().sessions
+export async function listSessions(botKey) {
+
+  const user = getUser();
+  const userId = user?.id;
+  
+  let sessionBotStorage = loadState().sessions
     .filter(s => s.botKey === botKey)
     .sort((a, b) => (new Date(b.updatedAt)) - (new Date(a.updatedAt)));
+
+  if (!sessionBotStorage || sessionBotStorage?.length === 0) {
+    // if session does not exist, do retrieve from backend
+    const backendSession = await retrieveChatHistory({userId, assistantId: botKey});
+    
+    if (backendSession && backendSession?.length > 0) {
+        sessionBotStorage = backendSession.map((data) => {
+          return {
+            id: data?.sessionId,
+            botKey: data?.assistantId,
+            title: data?.title,
+            messages: data?.messages,
+            createdAt: data?.createdAt,
+            updatedAt: data?.updatedAt
+          }
+        });
+
+        const state = loadState();
+        state.sessions.push(...sessionBotStorage);
+        saveState(state);
+    }
+  }
+
+  return sessionBotStorage;
 }
 
 export async function createSession(assistantId) {
@@ -216,45 +243,67 @@ export function getSession(id) {
 export function appendMessage(sessionId, role, content) {
   const state = loadState();
   const session = state.sessions.find(s => s.id === sessionId);
+  
   if (!session) return null;
-  session.messages.push({ id: uuid(), role, content, ts: Date.now() });
-  if (role === "user" && (!session.title || session.title === "New chat")) {
-    session.title = content.slice(0, 60);
-  }
+  session.messages.push({ role, content, createdAt: Date.now() });
+  
   session.updatedAt = Date.now();
+
   saveState(state);
+  
   return session;
 }
 
+function fallbackTitle(message) {
+  const t = String(message || "").trim().replace(/\s+/g, " ");
+  return t.length > 50 ? t.slice(0, 47) + "..." : (t || "New chat");
+}
+
 // Demo reply for now — replace with real backend call later.
-export async function sendMessage(botKey, sessionId, text) {
+export async function sendMessage(botKey, sessionId, text, setIsTyping, setSessions) {
+  // Update Chat title API
+  const state = loadState();
+  const existingSession = state.sessions.find(s => s.id === sessionId);
+  if (existingSession?.messages?.length === 0) {
+    const title = fallbackTitle(text);
+
+    await doUpdateChatTitle({ sessionId, title });
+
+    existingSession.title = title;
+
+    saveState(state);
+  }
+
   appendMessage(sessionId, "user", text);
   
   const authUser = getUser();
   const userId = authUser?.id;
 
+  setSessions(await listSessions(botKey));
+  setIsTyping(true);
+
   // Call Chat Stream API
-  const reply = await postChatStreamingAPI({
-    assistantId: botKey,
-    sessionId,
-    message: text,
-    userId
-  });
-  
+  let reply = 'Error on Backend/OpenAI Rate Limitting, please retry at another time.';
+  try {
+    reply = await postChatStreamingAPI({
+      assistantId: botKey,
+      sessionId,
+      message: text,
+      userId
+    });
+  } catch (error) {
+    console.log(error);
+  }
+
+  // give response buffer typing before display the actual message
+  setIsTyping(false);
   appendMessage(sessionId, "assistant", reply);
-  
+  setSessions(await listSessions(botKey));
+
   return reply;
 }
 
-export function exportSessionText(sessionId) {
-  const session = getSession(sessionId);
-  if (!session) return "";
-  const botName = getBotName(session.botKey);
-  const lines = [
-    `# Chat with ${botName}`,
-    `Started: ${new Date(session.createdAt).toLocaleString()}`,
-    "",
-    ...session.messages.map(m => `${m.role.toUpperCase()}: ${m.content}`),
-  ];
-  return lines.join("\n");
+export async function doExportChat(sessionId) {
+
+  await doDownloadChatHistReport(sessionId)
 }

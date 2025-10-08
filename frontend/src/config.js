@@ -12,4 +12,5 @@ export const POST_SESSION_PATH = import.meta.env.POST_SESSION_PATH || '/api/sess
 export const POST_STREAM_CHAT_PATH = import.meta.env.POST_STREAM_CHAT_PATH || '/api/chats/stream';
 export const GET_LIST_HISTORY_PATH = import.meta.env.GET_LIST_HISTORY_PATH || '/api/chats/history';
 export const GET_LIST_MESSAGE_PER_SESSION_PATH = import.meta.env.GET_LIST_MESSAGE_PER_SESSION_PATH || '/api/chats/messages';
-export const POST_CHAT_HIST_REPORT_PATH = import.meta.env.POST_CHAT_HIST_REPORT_PATH || '/api/chats/history/report';
+export const GET_CHAT_HIST_REPORT_PATH = import.meta.env.GET_CHAT_HIST_REPORT_PATH || '/api/chats/history/report';
+export const POST_UPDATE_CHAT_TITLE_PATH = import.meta.env.POST_UPDATE_CHAT_TITLE_PATH || '/api/chats/title/update';

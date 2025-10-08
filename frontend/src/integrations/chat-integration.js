@@ -1,4 +1,4 @@
-import { API_BASE, POST_STREAM_CHAT_PATH } from "../config";
+import { API_BASE, POST_STREAM_CHAT_PATH, GET_LIST_HISTORY_PATH, POST_UPDATE_CHAT_TITLE_PATH, GET_CHAT_HIST_REPORT_PATH } from "../config";
 
 export async function postChatStreamingAPI(payload) {
     const response = await fetch(API_BASE + POST_STREAM_CHAT_PATH, {
@@ -59,4 +59,62 @@ export async function postChatStreamingAPI(payload) {
     // flush any remaining (optional)
     flushLines();
     return replyMessage;
+}
+
+export async function retrieveChatHistory({ userId, assistantId }) {
+  const response = await fetch(API_BASE + GET_LIST_HISTORY_PATH + `?userId=${userId}&assistantId=${assistantId}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  });
+
+  const json = await response.json();
+  let data = [];
+  if (json?.data) {
+    data = json?.data;
+  }
+
+  return data;
+}
+
+export async function doUpdateChatTitle({ sessionId, title }) {
+  const response = await fetch(API_BASE + POST_UPDATE_CHAT_TITLE_PATH, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      sessionId,
+      title
+    })
+  });
+
+  const json = await response.json();
+  let chatData = null;
+  if (json?.data) {
+    chatData = json?.data;
+  }
+
+  return chatData;
+}
+
+export async function doDownloadChatHistReport(sessionId) {
+  const response = await fetch(API_BASE + GET_CHAT_HIST_REPORT_PATH + `/${sessionId}`);
+
+  const cd = response.headers.get('Content-Disposition') || '';
+  const match = cd.match(/filename\*?=(?:UTF-8'')?"?([^";]+)/i);
+  const filename = match ? decodeURIComponent(match[1]) : `report-${Date.now()}.pdf`;
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+
+   // Trigger a download
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }

@@ -1,29 +1,37 @@
-const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
-const { fileURLToPath } = require('url');
 const OpenAI = require('openai');
 
+// fill 1. Project Key
 const client = new OpenAI({ apiKey: '' });
 
-const PDF_PATH = path.join(__dirname, 'Ulink Assist Dr Panel - SG - v2025.08.pdf');
+// fill 2. vector name
+const vectorName = '';
 
-async function assertPdfReadable(fp) {
-  console.log('cwd =', process.cwd());
-  console.log('resolved PDF path =', fp);
+// fill folder name, filename
+const PDF_PATH = [
+    path.join(__dirname, 'foldername', 'filename')
+];
 
-  fs.accessSync(fp, fs.constants.R_OK);
-  const stat = fs.statSync(fp);
-  if (stat.size === 0) throw new Error('PDF is empty');
+async function assertPdfReadable(fps) {
 
-  // quick magic-bytes check: %PDF
-  const fd = fs.openSync(fp, 'r');
-  const buf = Buffer.alloc(4);
-  fs.readSync(fd, buf, 0, 4, 0);
-  fs.closeSync(fd);
-  if (!buf.equals(Buffer.from([0x25, 0x50, 0x44, 0x46]))) {
-    console.warn('WARN: File does not start with %PDF — is it really a PDF?');
-  }
+  fps.forEach(fp => {
+    console.log('cwd =', process.cwd());
+    console.log('resolved PDF path =', fp);
+
+    fs.accessSync(fp, fs.constants.R_OK);
+    const stat = fs.statSync(fp);
+    if (stat.size === 0) throw new Error('PDF is empty');
+
+    // quick magic-bytes check: %PDF
+    const fd = fs.openSync(fp, 'r');
+    const buf = Buffer.alloc(4);
+    fs.readSync(fd, buf, 0, 4, 0);
+    fs.closeSync(fd);
+    if (!buf.equals(Buffer.from([0x25, 0x50, 0x44, 0x46]))) {
+        console.warn('WARN: File does not start with %PDF — is it really a PDF?');
+    }
+  });
 }
 
 async function run() {
@@ -32,12 +40,16 @@ async function run() {
     await assertPdfReadable(PDF_PATH);
 
     // 1) Create a vector store
-    const store = await client.vectorStores.create({ name: 'Ulink SG Doctors KB' });
+    const store = await client.vectorStores.create({ name: vectorName });
     console.log('store.id =', store.id);
+
+    const PDF_PATHS = PDF_PATH.map(p => {
+        return fs.createReadStream(p);
+    });
 
     // 2) Upload & wait for indexing to finish (success/failed)
     const batch = await client.vectorStores.fileBatches.uploadAndPoll(store.id, {
-      files: [fs.createReadStream(PDF_PATH)],
+      files: PDF_PATHS,
     });
     console.log('batch.status =', batch.status);
 
