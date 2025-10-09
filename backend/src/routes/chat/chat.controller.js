@@ -3,7 +3,6 @@ const OpenAI = require('openai');
 const fs = require('fs');
 const Pdfkit = require('pdfkit');
 const moment = require('moment');
-const JsPdf = require('jspdf');
 
 const { OPENAI_MODEL } = require('../../config');
 const { asssistantMap } = require('../assistant/assistant.controller');
