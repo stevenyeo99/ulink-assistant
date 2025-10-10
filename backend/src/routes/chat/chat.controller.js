@@ -76,6 +76,10 @@ async function doCreateNewChat(chatConfig) {
   return existingChat;
 }
 
+async function doCallOpenAI(client, clientConfig) {
+  return await client.responses.create(clientConfig);
+}
+
 async function doStreamChat(req, res) {
   try {
     const { userId, assistantId, sessionId, message } = req.body;
@@ -114,8 +118,26 @@ async function doStreamChat(req, res) {
       }];
     }
 
-    const stream = await client.responses.create(clientConfig);
+    let stream = null;
+    let isRetry = true;
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    while (isRetry) {
+      try {
+        stream = await doCallOpenAI(client, clientConfig);
+        isRetry = false;
+      } catch (err) {
+        const is429 = err?.status === 429 || err?.code === 'rate_limit_exceeded';
 
+        const resetHeader = err?.headers?.['x-ratelimit-reset-tokens'];
+        const delay = resetHeader ? Number(resetHeader) * 1000 : 6000;
+
+        console.log(`OpenAI token TPM need delay: ${delay}`);
+        console.log(`${is429}, error code: ${err?.status}, ${err?.code}`);
+
+        await sleep(delay);
+      }
+    }
+    
     // Store User Messages
     addMessage({
       chatId: existingChat?._id,
