@@ -8,9 +8,10 @@ const client = new OpenAI({ apiKey: '' });
 // fill 2. vector name
 const vectorName = '';
 
-// fill folder name, filename
+// fill folder name (2rd param), filename (3rd param)
 const PDF_PATH = [
-    path.join(__dirname, 'foldername', 'filename')
+    path.join(__dirname, 'Singlife', 'New Policy.pdf'),
+    path.join(__dirname, 'Singlife', 'Old Policy.pdf'),
 ];
 
 async function assertPdfReadable(fps) {
