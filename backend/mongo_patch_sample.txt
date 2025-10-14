@@ -9,3 +9,15 @@ db.assistants.updateOne({
         systemPromptFile: 'my_doctor_recommendation_prompt.md'
     }
 });
+
+
+db.assistants.insertOne({
+    code: 'fm_clinic',
+    displayName: 'FM Clinic',
+    description: 'This GPT reviews uploaded patient forms and recommends 2 doctors in Singapore and 2 in Malaysia. It then guides selection, checks availability/cost/teleconsult, and prepares a WhatsApp summary for internal use.',
+    enabled: true,
+    useDocs: true,
+    apiKey: '******',
+    vectorStoreId: '******',
+    systemPromptFile: '******'
+});

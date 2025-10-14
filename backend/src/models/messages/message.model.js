@@ -11,7 +11,7 @@ async function findMessageByChatId(filter, excludeField) {
         ...excludeField
     })
     .lean()
-    .sort({ timestamp: 1 });
+    .sort({ createdAt: 1 });
 }
 
 module.exports = {

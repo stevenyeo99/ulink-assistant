@@ -6,12 +6,13 @@ const OpenAI = require('openai');
 const client = new OpenAI({ apiKey: '' });
 
 // fill 2. vector name
-const vectorName = '';
+const vectorName = 'FM CLINIC KB';
 
 // fill folder name (2rd param), filename (3rd param)
 const PDF_PATH = [
-    path.join(__dirname, 'Singlife', 'New Policy.pdf'),
-    path.join(__dirname, 'Singlife', 'Old Policy.pdf'),
+    path.join(__dirname, 'FM Clinic', 'Ulink Assist Dr Panel - SG - v2025.08.pdf'),
+    path.join(__dirname, 'FM Clinic', 'Ulink Assist Dr Panel - v2025 - KL and Penang - Medicine.pdf'),
+    path.join(__dirname, 'FM Clinic', 'Ulink Assist Dr Panel - v2025 - KL and Penang - Surgery.pdf'),
 ];
 
 async function assertPdfReadable(fps) {
