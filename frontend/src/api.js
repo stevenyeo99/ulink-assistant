@@ -117,7 +117,10 @@ function saveBotLabels(map) {
 export async function listChatbots(filter = "") {
   const labels = loadBotLabels();
 
-  const listOfAssistant = await getListOfAssistant();
+  const user = getUser();
+  const userId = user?.id;
+
+  const listOfAssistant = await getListOfAssistant(userId);
 
   const out = listOfAssistant.map(b => {
     const assistMap = (

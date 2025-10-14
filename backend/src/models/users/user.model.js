@@ -10,6 +10,11 @@ async function checkExistUserRecord(user) {
     return exist;
 }
 
+async function getUserById(id) {
+    return await User.findById(id);
+}
+
 module.exports = {
+    getUserById,
     checkExistUserRecord
 }

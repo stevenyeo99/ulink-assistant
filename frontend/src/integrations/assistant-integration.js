@@ -1,7 +1,7 @@
 import { API_BASE, GET_LIST_ASSISTANT_PATH } from "../config";
 
-export async function getListOfAssistant() {
-  const response = await fetch(API_BASE + GET_LIST_ASSISTANT_PATH, {
+export async function getListOfAssistant(userId) {
+  const response = await fetch(API_BASE + GET_LIST_ASSISTANT_PATH + `?userId=${userId}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json'

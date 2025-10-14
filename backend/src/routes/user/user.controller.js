@@ -4,17 +4,28 @@ const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../../config.js');
 
 const User = require('../../models/users/user.mongo.js');
+const { doRetrieveAssistantIdByUserId, doApplyUserAssistant } = require('../../models/user-assistants/user-assistant.model.js');
+const { getListOfAssistant } = require('../../models/assistants/assistant.model.js');
 
 async function register(req, res, next) {
   try {
-    const { email, password } = req.body || {};
+    const { email, password, assistantIds } = req.body || {};
     if (!email || !password) return res.status(400).json({ error: 'email and password required' });
 
     const exists = await User.findOne({ email });
     if (exists) return res.status(409).json({ error: 'User already exists' });
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const user = await User.create({ email, password: passwordHash });
+    const user = await User.create({ email, password: passwordHash, role: 'user' });
+
+    let listOfAsstId = assistantIds;
+    if (!listOfAsstId || listOfAsstId?.length === 0) {
+      listOfAsstId = await getListOfAssistant();
+      listOfAsstId = listOfAsstId.map(asst => asst?._id);
+    }
+    
+    await doApplyUserAssistant(user?.id, listOfAsstId);
+    
     return res.status(201).json({ id: user._id, email: user.email });
   } catch (err) {
     return next(err);

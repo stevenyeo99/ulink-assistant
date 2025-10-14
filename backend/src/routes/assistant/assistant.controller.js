@@ -1,12 +1,25 @@
 const mongoose = require('mongoose');
 
 const { getListOfAssistant, getAsisstantKeyById, getListOfAssistantConfigs } = require("../../models/assistants/assistant.model");
-const assistantRouter = require('./assistant.router');
+const { doRetrieveAssistantIdByUserId } = require('../../models/user-assistants/user-assistant.model');
+const { getUserById } = require('../../models/users/user.model');
 
 const asssistantMap = new Map();
 
 async function doRetrieveListOfAssistant(req, res) {
-    return res.status(200).json(await getListOfAssistant());
+    const { userId } = req.query;
+
+    const user = await getUserById(userId);
+
+    let listOfAssistantId = [];
+    if (userId && user?.role !== 'admin') {
+      listOfAssistantId = await doRetrieveAssistantIdByUserId(userId);
+      listOfAssistantId = listOfAssistantId.map(assistant => assistant?.assistantId);
+    }
+
+    const listOfAssistant = await getListOfAssistant(listOfAssistantId);
+
+    return res.status(200).json(listOfAssistant);
 }
 
 async function doRetrieveAssistantKey(req, res) {

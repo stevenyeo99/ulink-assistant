@@ -14,7 +14,6 @@ const { findChat, addChat, getAllChats, saveChat } = require('../../models/chats
 const { addMessage, findMessageByChatId } = require('../../models/messages/message.model');
 const { getAsisstantKeyById } = require('../../models/assistants/assistant.model');
 
-
 function loadSystemPrompt(assistantId) {
 
     let systemPrompt;
