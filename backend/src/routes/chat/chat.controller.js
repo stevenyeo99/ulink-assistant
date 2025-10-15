@@ -4,7 +4,7 @@ const fs = require('fs');
 const Pdfkit = require('pdfkit');
 const moment = require('moment');
 
-const { OPENAI_MODEL } = require('../../config');
+const { OPENAI_MODEL, REPORT_FOLDER_PATH } = require('../../config');
 const { asssistantMap } = require('../assistant/assistant.controller');
 
 const { fallbackTitle } = require('../../utils/text-util');
@@ -222,7 +222,7 @@ async function doGenerateConversationHistoryReport(req, res) {
       const doc = new Pdfkit({ size: "A4", margin: 48 });
 
       const fileName = formatFileName(`${existingChat?.title}`);
-      const file = path.join(__dirname, '..', '..', '..', 'reports', fileName);
+      const file = path.join(__dirname, '..', '..', '..', REPORT_FOLDER_PATH, fileName);
 
       const stream = fs.createWriteStream(file);
 
