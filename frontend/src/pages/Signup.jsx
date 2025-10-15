@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { register } from "../api.js";
 
 export default function Signup() {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -12,7 +12,7 @@ export default function Signup() {
     e.preventDefault();
     setError("");
     try {
-      await register(email, password);
+      await register(username, password);
       navigate("/login");
     } catch (err) {
       setError(err.message || "Signup failed");
@@ -26,8 +26,8 @@ export default function Signup() {
         <h2 className="form-title">Create an account</h2>
 
         <form className="stack" onSubmit={onSubmit}>
-          <label>Email</label>
-          <input className="input" value={email} onChange={e=>setEmail(e.target.value)} />
+          <label>Username</label>
+          <input className="input" value={username} onChange={e=>setUsername(e.target.value)} />
 
           <label>Password</label>
           <input className="input" type="password" value={password} onChange={e=>setPassword(e.target.value)} />

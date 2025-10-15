@@ -68,22 +68,22 @@ export function clearAuth() {
 }
 
 // ====== Auth API ======
-export async function login(email, password) {
+export async function login(username, password) {
   const data = await request(LOGIN_PATH, {
     method: "POST",
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ username, password }),
   });
   const token = data.token;
-  const user  = data.user || (data.username ? { email, username: data.username } : { email });
+  const user  = data.user || (data.username ? { username, username: data.username } : { username });
   if (!token) throw new Error("No token in response");
   setAuth(token, user);
   return user;
 }
 
-export async function register(email, password) {
+export async function register(username, password) {
   const data = await request(REGISTER_PATH, {
     method: "POST",
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ username, password }),
   });
   return data;
 }

@@ -9,14 +9,14 @@ const { getListOfAssistant } = require('../../models/assistants/assistant.model.
 
 async function register(req, res, next) {
   try {
-    const { email, password, assistantIds } = req.body || {};
-    if (!email || !password) return res.status(400).json({ error: 'email and password required' });
+    const { username, password, assistantIds } = req.body || {};
+    if (!username || !password) return res.status(400).json({ error: 'username and password required' });
 
-    const exists = await User.findOne({ email });
+    const exists = await User.findOne({ username });
     if (exists) return res.status(409).json({ error: 'User already exists' });
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const user = await User.create({ email, password: passwordHash, role: 'user' });
+    const user = await User.create({ username, password: passwordHash, role: 'user' });
 
     let listOfAsstId = assistantIds;
     if (!listOfAsstId || listOfAsstId?.length === 0) {
@@ -26,7 +26,7 @@ async function register(req, res, next) {
     
     await doApplyUserAssistant(user?.id, listOfAsstId);
     
-    return res.status(201).json({ id: user._id, email: user.email });
+    return res.status(201).json({ id: user._id, username: user.username });
   } catch (err) {
     return next(err);
   }
@@ -34,17 +34,17 @@ async function register(req, res, next) {
 
 async function login(req, res, next) {
   try {
-    const { email, password } = req.body || {};
-    if (!email || !password) return res.status(400).json({ error: 'email and password required' });
+    const { username, password } = req.body || {};
+    if (!username || !password) return res.status(400).json({ error: 'username and password required' });
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ username });
     if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
 
-    const token = jwt.sign({ sub: String(user._id), email: user.email }, JWT_SECRET, { expiresIn: '2h' });
-    return res.json({ token, user: { id: user._id, email: user.email } });
+    const token = jwt.sign({ sub: String(user._id), username: user.username }, JWT_SECRET, { expiresIn: '2h' });
+    return res.json({ token, user: { id: user._id, username: user.username } });
   } catch (err) {
     return next(err);
   }

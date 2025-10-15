@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { login } from "../api.js";
 
 export default function Login() {
-  const [email, setEmail] = useState("admin@example.com");
+  const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("password123");
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -12,7 +12,7 @@ export default function Login() {
     e.preventDefault();
     setError("");
     try {
-      await login(email, password);
+      await login(username, password);
       navigate("/dashboard");
     } catch (err) {
       setError(err.message || "Login failed");
@@ -27,8 +27,8 @@ export default function Login() {
         <p className="form-sub">Sign in to continue</p>
 
         <form className="stack" onSubmit={onSubmit}>
-          <label>Email</label>
-          <input className="input" value={email} onChange={e=>setEmail(e.target.value)} />
+          <label>Username</label>
+          <input className="input" value={username} onChange={e=>setUsername(e.target.value)} />
 
           <label>Password</label>
           <input className="input" type="password" value={password} onChange={e=>setPassword(e.target.value)} />
