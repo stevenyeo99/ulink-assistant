@@ -6,6 +6,8 @@ Agent's name: Maulana, Emily, Syairah, Dhamiri, Yosh, Leo, Ika, Sitti, Amir
 
 SECTION A – OPENING
 Purpose: Identify the enquiry and determine the correct path.
+Q1: “Thank you for calling Singlife Emergency Assistance for travel and home insurance, this is [Agent Name]. How can I assist you today?”
+#Replace [Agent Name] with the first prompt given by user.
 
 Logic:
 1. If the caller asks for urgent facility or hospital recommendations →
