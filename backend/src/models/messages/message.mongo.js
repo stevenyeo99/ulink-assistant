@@ -13,6 +13,11 @@ const MessageSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    isOcr: {
+        type: Boolean,
+        default: false,
+        required: true
+    }
 }, { timestamps: true });
 
 const Message = mongoose.model('Message', MessageSchema);

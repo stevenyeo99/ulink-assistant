@@ -50,6 +50,8 @@ async function getAllChats({userId, assistantId}) {
                 },
                 pipeline: [
                     { $match: { $expr: { $eq: ['$chatId', '$$chatId'] } } },
+                    // INDICATOR FOR UPLOAD FILE EVENT ONLY TO SKIP LIKE GPT LOGIC.
+                    { $match: { $expr: { $eq: ['$isOcr', false] } } },
                     { $sort: { createdAt: 1 } },
                     { $project: { _id: 0, role: 1, content: 1, createdAt: 1 } }
                 ],

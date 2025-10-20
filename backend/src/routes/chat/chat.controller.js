@@ -90,7 +90,7 @@ async function doStreamChat(req, res) {
     const projectApiKey = loadProjectKey(assistantId);
 
     let existingChat = await doCreateNewChat({ userId, assistantId, sessionId });
-    let history = await findMessageByChatId({ chatId: existingChat._id}, {createdAt: 0, chatId: 0, updatedAt: 0});
+    let history = await findMessageByChatId({ chatId: existingChat._id, isOcr: false }, {createdAt: 0, chatId: 0, updatedAt: 0});
 
     // SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
@@ -144,7 +144,8 @@ async function doStreamChat(req, res) {
     addMessage({
       chatId: existingChat?._id,
       role: 'user',
-      content: message
+      content: message,
+      isOcr: false
     });
     
     let msg = '';
@@ -163,7 +164,8 @@ async function doStreamChat(req, res) {
     addMessage({
       chatId: existingChat?._id.toString(),
       role: 'assistant',
-      content: msg
+      content: msg,
+      isOcr: false
     });
 
     // console.log(msg);
@@ -200,7 +202,7 @@ async function doGetChatMessages(req, res) {
     });
   }
 
-  const chatMessages = await findMessageByChatId({chatId});
+  const chatMessages = await findMessageByChatId({chatId, isOcr: false});
 
   return res.status(200).json({
     data: chatMessages
@@ -217,7 +219,7 @@ async function doGenerateConversationHistoryReport(req, res) {
     });
   }
 
-  const chatMessages = await findMessageByChatId({chatId: existingChat._id});
+  const chatMessages = await findMessageByChatId({chatId: existingChat._id, isOcr: false});
   const assistant = await getAsisstantKeyById(existingChat.assistantId);
 
   if (chatMessages && chatMessages.length > 1) {
@@ -347,7 +349,7 @@ async function doStreamChatV2(req, res) {
     let content = message;
 
     let existingChat = await doCreateNewChat({ userId, assistantId, sessionId });
-    let history = await findMessageByChatId({ chatId: existingChat._id}, {createdAt: 0, chatId: 0, updatedAt: 0});
+    let history = await findMessageByChatId({ chatId: existingChat._id, isOcr: false}, {createdAt: 0, chatId: 0, updatedAt: 0, isOcr: 0});
 
     // SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
@@ -355,6 +357,7 @@ async function doStreamChatV2(req, res) {
     res.setHeader('Connection', 'keep-alive');
 
     // Handling the Upload & OCR (if uploaded)
+    let isOcr = false;
     if (fileObj?.path) {
       // convert word into pdf if word file.
       if (fileObj?.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
@@ -372,6 +375,7 @@ async function doStreamChatV2(req, res) {
 
       let ocrText = await doTriggerOcr(pdfPath);
       if (ocrText) {
+        isOcr = true;
         content += '\r\n\r\n' + ocrText;
       }
     }
@@ -381,7 +385,6 @@ async function doStreamChatV2(req, res) {
     }
     
     const client = new OpenAI({ apiKey: projectApiKey });
-
     const clientConfig = {
         model: OPENAI_MODEL,
         instructions: systemPromptIns,
@@ -416,17 +419,21 @@ async function doStreamChatV2(req, res) {
         const resetHeader = err?.headers?.['x-ratelimit-reset-tokens'];
         const delay = resetHeader ? Number(resetHeader) * 1000 : 6000;
 
+        console.log(err?.code);
+        console.log(err?.status);
         console.log(`OpenAI token TPM need delay: ${delay}`);
         console.log(`${is429}, error code: ${err?.status}, ${err?.code}`);
 
         await sleep(delay);
       }
     }
+
     // Store User Messages
     const userMsg = await addMessage({
       chatId: existingChat?._id,
       role: 'user',
-      content: content
+      content: content,
+      isOcr: isOcr // if upload docs meaning OCR & skip from display chat history like OpenAI
     });
 
     if (userMsg && fileObj?.path) {
@@ -456,7 +463,8 @@ async function doStreamChatV2(req, res) {
     await addMessage({
       chatId: existingChat?._id.toString(),
       role: 'assistant',
-      content: msg
+      content: msg,
+      isOcr: false
     });
 
     // console.log('\r\n\r\n ----OPENAI RESPONSE: \r\n\r\n');
