@@ -2,6 +2,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import '../components/utils/ChatUploadButton.css';
+
 import {
   getToken, clearAuth,
   getBotName, listChatbots,
@@ -11,6 +13,7 @@ import {
 } from "../api.js";
 
 // util component
+import ChatUploadButton from '../components/utils/ChatUploadButton';
 import { TypingDots } from '../components/utils/TypingDots.jsx';
 
 export default function Dashboard() {
@@ -29,6 +32,20 @@ export default function Dashboard() {
   const endRef = useRef(null);
   const [sendDisabled, setSendDisabled] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+
+  // upload field
+  const [attachments, setAttachments] = useState([]);
+  const [uploading, setUploading] = useState(false);
+
+  const onPickFiles = (files) => {
+    const withIds = files.map(f => ({ id: crypto.randomUUID(), file: f }));
+    setAttachments(prev => [...prev, ...withIds]);
+  };
+
+  const removeAttachment = (id) => {
+    setAttachments(prev => prev.filter(a => a.id !== id));
+  }
 
   useEffect(() => {
     if (!botKey) { 
@@ -69,14 +86,24 @@ export default function Dashboard() {
 
   async function onSend(e) {
     e.preventDefault();
+    setIsSending(true);
+    setUploading(true);
 
     const text = input.trim();
-    if (!text || !botKey || !sessionId) return;
+    if ((!text && attachments?.length === 0 ) || !botKey || !sessionId) {
+      return;
+    }
     
     setSendDisabled(true);
-    await sendMessage(botKey, sessionId, text, setIsTyping, setSessions);
+
+    const attachmentFiles = attachments.map(a => a.file);
+    await sendMessage(botKey, sessionId, text, setIsTyping, setSessions, attachmentFiles);
+
+    setAttachments([]);
+    setUploading(false);
     setInput("");
     setSendDisabled(false);
+    setIsSending(false);
   }
 
   async function doExportChatEvent() {
@@ -92,7 +119,7 @@ export default function Dashboard() {
   //   setBots(listChatbots(botFilter));
   // }
 
-  const btnSendDisabled = (!botKey || !sessionId || !input.trim());
+  const btnSendDisabled = (!botKey || !sessionId || (!input.trim() && attachments?.length === 0));
 
   return (
     <div className="console-page">
@@ -187,15 +214,30 @@ export default function Dashboard() {
             </div>
 
             <form className="composer">
+              <div className='upload-button-wrap'>
+                <ChatUploadButton disabled={!botKey || !sessionId || sendDisabled || uploading} fileCount={attachments.length} onFiles={onPickFiles} />
+              </div>
+
               <input
                 className="input input-message"
                 placeholder={!botKey ? "Choose a Assistant first" : "Type a message…"}
                 value={input}
                 onChange={e => setInput(e.target.value)}
-                disabled={!botKey || !sessionId || sendDisabled}
+                disabled={!botKey || !sessionId || sendDisabled || uploading}
               />
 
-              <button className="button primary send-btn" disabled={btnSendDisabled || sendDisabled} onClick={onSend}>Send</button>
+              <button className="button primary send-btn" disabled={btnSendDisabled || sendDisabled || uploading} onClick={onSend}>{isSending ? "Sending..." : "Send"}</button>
+
+              {/* Inline attachment indicator row */}
+              <div className="attachments-row">
+                {attachments.map(({ id, file }) => (
+                  <div key={id} className="chip" title={file.name}>
+                    <span className="chip-icon">📎</span>
+                    <span className="chip-name">{file.name}</span>
+                    <button type="button" className="chip-remove" onClick={() => removeAttachment(id)}>×</button>
+                  </div>
+                ))}
+              </div>
             </form>
           </section>
         </div>

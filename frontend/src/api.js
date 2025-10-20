@@ -16,9 +16,9 @@ import {
 
 import {
   doUpdateChatTitle,
-  postChatStreamingAPI,
+  postChatStreamingV2API,
   retrieveChatHistory,
-  doDownloadChatHistReport
+  doDownloadChatHistReport,
 } from './integrations/chat-integration';
 
 
@@ -263,7 +263,7 @@ function fallbackTitle(message) {
 }
 
 // Demo reply for now — replace with real backend call later.
-export async function sendMessage(botKey, sessionId, text, setIsTyping, setSessions) {
+export async function sendMessage(botKey, sessionId, text, setIsTyping, setSessions, attachmentFiles = []) {
   // Update Chat title API
   const state = loadState();
   const existingSession = state.sessions.find(s => s.id === sessionId);
@@ -277,7 +277,9 @@ export async function sendMessage(botKey, sessionId, text, setIsTyping, setSessi
     saveState(state);
   }
 
-  appendMessage(sessionId, "user", text);
+  if (text) {
+    appendMessage(sessionId, "user", text);
+  }
   
   const authUser = getUser();
   const userId = authUser?.id;
@@ -288,12 +290,12 @@ export async function sendMessage(botKey, sessionId, text, setIsTyping, setSessi
   // Call Chat Stream API
   let reply = 'Error on Backend/OpenAI Rate Limitting, please retry at another time.';
   try {
-    reply = await postChatStreamingAPI({
+    reply = await postChatStreamingV2API({
       assistantId: botKey,
       sessionId,
       message: text,
       userId
-    });
+    }, attachmentFiles);
   } catch (error) {
     console.log(error);
   }

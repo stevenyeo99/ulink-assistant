@@ -19,7 +19,6 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 const storage = multer.diskStorage({
     destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
     filename: (_req, file, cb) => {
-        console.log(file);
         const ts = moment().format('YYYYMMDDHHmmss');
         const ext = path.extname(file.originalname);
         const safePdf = `${ts}_input${ext}`;
@@ -31,7 +30,6 @@ const upload = multer({
   storage,
   limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    console.log(file);
     if (allowedMimes.includes(file.mimetype)) {
       cb(null, true);
     } else {

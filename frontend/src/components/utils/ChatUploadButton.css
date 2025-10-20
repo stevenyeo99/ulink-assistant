@@ -1,0 +1,64 @@
+/* Column for the + button */
+.upload-col {
+  grid-column: 1 / 2;
+  display: flex;
+  align-items: center;
+}
+
+/* Input and send keep default placement (2 / 3 and 3 / 4 implicitly) */
+
+/* The chips row sits UNDER the input + Send (spans columns 2 -> 3) */
+.attachments-row {
+  grid-column: 2 / 4;        /* under input + Send */
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* --- Upload button (from earlier) --- */
+.chat-upload-container { position: relative; display: flex; align-items: center; }
+.chat-upload-button {
+  display: flex; align-items: center; justify-content: center;
+  height: 36px; width: 36px; border-radius: 50%;
+  background-color: #1f2937; color: #fff; border: 1px solid #111827;
+  box-shadow: 0 1px 2px rgba(0,0,0,.15); cursor: pointer; transition: all .2s ease; flex-shrink: 0;
+}
+.chat-upload-button:hover { background-color: #374151; transform: scale(1.05); }
+.chat-upload-button:active { background-color: #4b5563; transform: scale(0.97); }
+.chat-upload-button:disabled { background:#9ca3af; color:#e5e7eb; cursor:not-allowed; opacity:.6; transform:none; box-shadow:none; }
+.chat-upload-input { display: none; }
+.upload-button-wrap { position: relative; display: inline-flex; }
+.upload-button-wrap .badge {
+  position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 9px; background: #f97316; color: #fff; font-size: 11px; line-height: 18px; text-align: center;
+  box-shadow: 0 1px 2px rgba(0,0,0,.18);
+}
+
+/* --- Chips --- */
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  max-width: 260px; padding: 6px 10px; border-radius: 999px;
+  background: #f3f4f6; border: 1px solid #e5e7eb; box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+.chip-icon { font-size: 14px; }
+.chip-name {
+  font-size: 12px; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;
+}
+.chip-remove {
+  appearance: none; border: 0; background: transparent; color: #6b7280;
+  cursor: pointer; font-size: 14px; line-height: 1; padding: 2px 4px; transition: color .2s ease;
+}
+.chip-remove:hover { color: #ef4444; }
+
+/* --- Responsive tweak: on narrow screens put chips full width under everything --- */
+@media (max-width: 640px) {
+  .composer {
+    grid-template-columns: 36px 1fr auto;
+    row-gap: 6px;
+  }
+  .attachments-row {
+    grid-column: 1 / 4; /* span full width on mobile */
+  }
+}

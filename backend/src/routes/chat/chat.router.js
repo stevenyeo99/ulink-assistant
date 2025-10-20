@@ -19,6 +19,6 @@ chatRouter.get('/history/report/:sessionId', doGenerateConversationHistoryReport
 chatRouter.post('/title/update', doUpdateChatTitle);
 
 // v2 chat + upload file (multipart request body)
-chatRouter.post('/v2/stream', upload.single('file'), doStreamChatV2);
+chatRouter.post('/v2/stream', upload.array('files'), doStreamChatV2);
 
 module.exports = chatRouter;

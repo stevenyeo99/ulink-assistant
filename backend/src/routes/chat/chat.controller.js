@@ -327,16 +327,21 @@ async function doStreamChatV2(req, res) {
       return res.status(400).json({ error: 'invalid field.'});
     }
 
-    let fileObj = {};
-    if (req.file) {
-      fileObj = {
-        originalname: req.file.originalname,
-        filename: req.file.filename,
-        mimetype: req.file.mimetype,
-        size: req.file.size,
-        path: req.file.path,
-        destination: req.file.destination
-      }
+    let fileObjs = [];
+    if (req.files) {
+      req.files.forEach(file => {
+        let fileObj = {
+          originalname: file.originalname,
+          filename: file.filename,
+          mimetype: file.mimetype,
+          size: file.size,
+          path: file.path,
+          destination: file.destination
+        }
+
+        fileObjs.push(fileObj);
+      });
+      
     }
     // End get-set (payload & file upload)
 
@@ -358,27 +363,29 @@ async function doStreamChatV2(req, res) {
 
     // Handling the Upload & OCR (if uploaded)
     let isOcr = false;
-    if (fileObj?.path) {
-      // convert word into pdf if word file.
-      if (fileObj?.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        const fileNameUp = (fileObj?.filename.split('.')[0])?.trim() + '.pdf';
-        const docFilePath = fileObj?.path;
-        const pdfFilePath = `${fileObj?.destination}\\${fileNameUp}`;
-        await convertDocxToPdf(docFilePath, pdfFilePath);
-        fileObj.path = pdfFilePath;
-        fileObj.filename = fileNameUp;
+    for (const fileObj of fileObjs) {
+      if (fileObj?.path) {
+        // convert word into pdf if word file.
+        if (fileObj?.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+          const fileNameUp = (fileObj?.filename.split('.')[0])?.trim() + '.pdf';
+          const docFilePath = fileObj?.path;
+          const pdfFilePath = `${fileObj?.destination}\\${fileNameUp}`;
+          await convertDocxToPdf(docFilePath, pdfFilePath);
+          fileObj.path = pdfFilePath;
+          fileObj.filename = fileNameUp;
+        }
+
+        let filePath = fileObj?.path;
+
+        const pdfPath = filePath;
+
+        let ocrText = await doTriggerOcr(pdfPath);
+        if (ocrText) {
+          isOcr = true;
+          content += '\r\n\r\n' + ocrText;
+        }
       }
-
-      let filePath = fileObj?.path;
-
-      const pdfPath = filePath;
-
-      let ocrText = await doTriggerOcr(pdfPath);
-      if (ocrText) {
-        isOcr = true;
-        content += '\r\n\r\n' + ocrText;
-      }
-    }
+    };
 
     if (!content) {
       return res.status(400).json({ error: 'message/file required'});
@@ -436,13 +443,15 @@ async function doStreamChatV2(req, res) {
       isOcr: isOcr // if upload docs meaning OCR & skip from display chat history like OpenAI
     });
 
-    if (userMsg && fileObj?.path) {
-      await addUpload({
-        messageId: userMsg?._id,
-        originalFileName: fileObj?.originalname,
-        uploadedFileName: fileObj?.filename,
-        destination: fileObj?.destination
-      });
+    if (userMsg && fileObjs?.length) {
+      for (const fileObj of fileObjs) {
+        await addUpload({
+          messageId: userMsg?._id,
+          originalFileName: fileObj?.originalname,
+          uploadedFileName: fileObj?.filename,
+          destination: fileObj?.destination
+        });
+      }
     }
     
     let msg = '';
