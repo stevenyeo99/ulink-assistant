@@ -1,13 +1,24 @@
 const express = require('express');
 
-const { doStreamChat, doGetChatHistory, doGetChatMessages, doGenerateConversationHistoryReport, doUpdateChatTitle } = require('./chat.controller');
+// upload util
+const { upload } = require('../../utils/upload-file-util');
+
+const { 
+    doStreamChat, doGetChatHistory, doGetChatMessages, 
+    doGenerateConversationHistoryReport, doUpdateChatTitle,
+    doStreamChatV2 
+} = require('./chat.controller');
 
 const chatRouter = express.Router();
 
+// v1 chat (json)
 chatRouter.post('/stream', doStreamChat);
 chatRouter.get('/history', doGetChatHistory);
 chatRouter.get('/messages/:chatId', doGetChatMessages);
 chatRouter.get('/history/report/:sessionId', doGenerateConversationHistoryReport);
 chatRouter.post('/title/update', doUpdateChatTitle);
+
+// v2 chat + upload file (multipart request body)
+chatRouter.post('/v2/stream', upload.single('file'), doStreamChatV2);
 
 module.exports = chatRouter;

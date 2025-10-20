@@ -7,11 +7,14 @@ const moment = require('moment');
 const { OPENAI_MODEL, REPORT_FOLDER_PATH } = require('../../config');
 const { asssistantMap } = require('../assistant/assistant.controller');
 
-const { fallbackTitle } = require('../../utils/text-util');
 const { formatFileName } = require('../../utils/report-util');
+const { convertDocxToPdf } = require('../../utils/pdf-util');
+
+const { doTriggerOcr } = require('../../services/ocr-space/ocr-space');
 
 const { findChat, addChat, getAllChats, saveChat } = require('../../models/chats/chat.model');
 const { addMessage, findMessageByChatId } = require('../../models/messages/message.model');
+const { addUpload } = require('../../models/uploads/upload.model');
 const { getAsisstantKeyById } = require('../../models/assistants/assistant.model');
 
 function loadSystemPrompt(assistantId) {
@@ -305,12 +308,176 @@ async function doUpdateChatTitle(req, res) {
   }
 }
 
+async function doStreamChatV2(req, res) {
+  try {
+    // Start get-set (payload & file upload)
+    const payload = req.body?.payload;
+    let body = {};
+    if (typeof payload === 'string') {
+      try {
+        body = JSON.parse(payload);
+      } catch {
+        return res.status(400).json({ error: "Invalid JSON in 'payload'." });
+      }
+    }
+
+    if (!body?.userId || !body?.assistantId || !body?.sessionId) {
+      return res.status(400).json({ error: 'invalid field.'});
+    }
+
+    let fileObj = {};
+    if (req.file) {
+      fileObj = {
+        originalname: req.file.originalname,
+        filename: req.file.filename,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        path: req.file.path,
+        destination: req.file.destination
+      }
+    }
+    // End get-set (payload & file upload)
+
+
+    const { userId, assistantId, sessionId, message } = body;
+    const systemPromptIns = loadSystemPrompt(assistantId);
+    const vectorStoreIds = loadVectorId(assistantId);
+    const projectApiKey = loadProjectKey(assistantId);
+
+    let content = message;
+
+    let existingChat = await doCreateNewChat({ userId, assistantId, sessionId });
+    let history = await findMessageByChatId({ chatId: existingChat._id}, {createdAt: 0, chatId: 0, updatedAt: 0});
+
+    // SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // Handling the Upload & OCR (if uploaded)
+    if (fileObj?.path) {
+      // convert word into pdf if word file.
+      if (fileObj?.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        const fileNameUp = (fileObj?.filename.split('.')[0])?.trim() + '.pdf';
+        const docFilePath = fileObj?.path;
+        const pdfFilePath = `${fileObj?.destination}\\${fileNameUp}`;
+        await convertDocxToPdf(docFilePath, pdfFilePath);
+        fileObj.path = pdfFilePath;
+        fileObj.filename = fileNameUp;
+      }
+
+      let filePath = fileObj?.path;
+
+      const pdfPath = filePath;
+
+      let ocrText = await doTriggerOcr(pdfPath);
+      if (ocrText) {
+        content += '\r\n\r\n' + ocrText;
+      }
+    }
+
+    if (!content) {
+      return res.status(400).json({ error: 'message/file required'});
+    }
+    
+    const client = new OpenAI({ apiKey: projectApiKey });
+
+    const clientConfig = {
+        model: OPENAI_MODEL,
+        instructions: systemPromptIns,
+        input: [
+            { role: 'system', content: 'Answer strictly from your system knowledge.' },
+            ...history,
+            { 
+              role: 'user', 
+              content: content,  
+            }
+        ],
+        stream: true,
+    };
+
+    if (vectorStoreIds) {
+      clientConfig['tools'] = [{
+          "type": "file_search",
+          "vector_store_ids": vectorStoreIds
+      }];
+    }
+
+    let stream = null;
+    let isRetry = true;
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    while (isRetry) {
+      try {
+        stream = await doCallOpenAI(client, clientConfig);
+        isRetry = false;
+      } catch (err) {
+        const is429 = err?.status === 429 || err?.code === 'rate_limit_exceeded';
+
+        const resetHeader = err?.headers?.['x-ratelimit-reset-tokens'];
+        const delay = resetHeader ? Number(resetHeader) * 1000 : 6000;
+
+        console.log(`OpenAI token TPM need delay: ${delay}`);
+        console.log(`${is429}, error code: ${err?.status}, ${err?.code}`);
+
+        await sleep(delay);
+      }
+    }
+    // Store User Messages
+    const userMsg = await addMessage({
+      chatId: existingChat?._id,
+      role: 'user',
+      content: content
+    });
+
+    if (userMsg && fileObj?.path) {
+      await addUpload({
+        messageId: userMsg?._id,
+        originalFileName: fileObj?.originalname,
+        uploadedFileName: fileObj?.filename,
+        destination: fileObj?.destination
+      });
+    }
+    
+    let msg = '';
+    if (stream) {
+      for await (const event of stream) {
+        if (event.type === 'response.output_text.delta') {
+          msg += event.delta;
+          res.write(`data: ${JSON.stringify({ delta: event.delta })}\n\n`);
+        } else if (event.type === 'response.completed') {
+          res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+        } else if (event.type === 'error') {
+          res.write(`data: ${JSON.stringify({ error: event.error })}\n\n`);
+        }
+      }
+    }
+
+    // Store Assistant Messages
+    await addMessage({
+      chatId: existingChat?._id.toString(),
+      role: 'assistant',
+      content: msg
+    });
+
+    // console.log('\r\n\r\n ----OPENAI RESPONSE: \r\n\r\n');
+    // console.log(msg);
+    return res.end();
+  } catch (err) {
+    console.error(err);
+    res.write(`data: ${JSON.stringify({ error: String(err) })}\n\n`);
+    res.end();
+  }
+}
+
 module.exports = {
   doStreamChat,
   doGetChatHistory,
   doGetChatMessages,
   doGenerateConversationHistoryReport,
   doUpdateChatTitle,
+
+  // test
+  doStreamChatV2,
 
   // util
   doCreateNewChat

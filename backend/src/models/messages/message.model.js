@@ -1,7 +1,7 @@
 const Message = require('./message.mongo');
 
 async function addMessage(message) {
-    await Message.create(message);
+    return await Message.create(message);
 }
 
 async function findMessageByChatId(filter, excludeField) {

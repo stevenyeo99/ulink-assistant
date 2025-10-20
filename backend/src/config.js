@@ -10,6 +10,9 @@ const configs = {
     CORS_ALLOW_ORIGIN: process.env.CORS_ALLOW_ORIGIN || 'http://localhost:5173',
     OPENAI_MODEL: process.env.OPENAI_MODEL || 'gpt-5o',
     REPORT_FOLDER_PATH: process.env.REPORT_FOLDER_PATH || 'reports',
+    OCR_API_KEY: process.env.OCR_API_KEY || '',
+    UPLOAD_PATH: process.env.UPLOAD_PATH || 'ocr-docs',
+    UPLOAD_END: process.env.UPLOAD_END || 'tmp',
 
     // MONGO DB URI
     MONGODB_URI: process.env.MONGODB_URI || 'a'
