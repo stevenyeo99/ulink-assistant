@@ -15,7 +15,7 @@ const { doTriggerOcr } = require('../../services/ocr-space/ocr-space');
 const { findChat, addChat, getAllChats, saveChat } = require('../../models/chats/chat.model');
 const { addMessage, findMessageByChatId } = require('../../models/messages/message.model');
 const { addUpload } = require('../../models/uploads/upload.model');
-const { getAsisstantKeyById } = require('../../models/assistants/assistant.model');
+const { getAsisstantKeyById, getListOfAssistant } = require('../../models/assistants/assistant.model');
 const { getUserById } = require('../../models/users/user.model');
 
 // ***************************
@@ -175,7 +175,6 @@ async function doGetChatMessages(req, res) {
 
 async function doGenerateConversationHistoryReport(req, res) {
   const { sessionId } = req.params;
-
   let existingChat = await findChat({ sessionId });
   if (!existingChat) {
     return res.status(400).json({ 
@@ -183,10 +182,11 @@ async function doGenerateConversationHistoryReport(req, res) {
     });
   }
 
-  const chatMessages = await findMessageByChatId({chatId: existingChat._id, isOcr: false});
+  const chatMessages = await findMessageByChatId({chatId: existingChat._id, $expr: { $eq: [{ $ifNull: ["$isOcr", false] }, false] } });
   const assistant = await getAsisstantKeyById(existingChat.assistantId);
 
   if (chatMessages && chatMessages.length > 1) {
+    
     try {
       const fileName = formatFileName(`${existingChat?.title}`);
       const file = path.join(__dirname, '..', '..', '..', REPORT_FOLDER_PATH, fileName);
@@ -422,8 +422,28 @@ async function doStreamChatV2(req, res) {
 }
 
 async function doGenerateALLConversationHistoryReport(req, res) {
+  /**
+  RULE & FLOW:
+  // Generate Report Tree Level
+  // -> Folder format (EXP_ALL_CHAT_{yyyymmdd})
+  //    -> Assistant Level
+  //        -> User Level (all pdf report in here)
+  // All Report assigned to the linked folder
+  // zip the folder exported
+  // Delete all chat + message + upload records
+  // download / upload into google drive
+  */
 
+  const listOfAssistant = await getListOfAssistant([], { enabled: true });
+  for (const assistant of listOfAssistant) {
+    const REPORT_ROOT_PATH = REPORT_FOLDER_PATH;
+
+
+  }
+
+  return res.status(200).json(listOfAssistant);
 }
+
 // End Controller Function
 // ***************************
 

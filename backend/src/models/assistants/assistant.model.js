@@ -3,16 +3,19 @@ const Assistant = require('./assistant.mongo');
 // util
 const { cleanStmt } = require('../../utils/stmt-util');
 
-async function getListOfAssistant(listOfAssistantId = []) {
+async function getListOfAssistant(listOfAssistantId = [], addFilter = {}) {
 
     let filter = {};
     if (listOfAssistantId.length > 0) {
-        filter = {
-            _id: {
-                $in: [...listOfAssistantId]
-            }
-        }
+        filter['_id'] = {
+             $in: [...listOfAssistantId]
+        };
     }
+
+    filter = {
+        ...filter,
+        ...addFilter
+    };
 
     return await Assistant.find(filter, { apiKey: 0, vectorStoreId: 0, systemPromptFile: 0 }).lean();
 }
