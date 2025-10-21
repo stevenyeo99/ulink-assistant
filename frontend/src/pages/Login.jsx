@@ -38,10 +38,10 @@ export default function Login() {
           <button className="button primary" type="submit">Sign in</button>
         </form>
 
-        <div className="row" style={{ marginTop: 10 }}>
+        {/* <div className="row" style={{ marginTop: 10 }}>
           <span>New here?</span>
           <Link to="/signup" className="button ghost">Sign up</Link>
-        </div>
+        </div> */}
       </div>
     </div>
   );

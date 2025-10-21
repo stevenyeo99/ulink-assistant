@@ -26,19 +26,25 @@ async function saveChat(chat) {
     );
 }
 
-async function getAllChats({userId, assistantId}) {
+async function getAllChats({ userId, assistantId, isAdmin }) {
+
+    const chatConditionList = [
+        {
+            $eq: ['$assistantId', new ObjectId(assistantId)]
+        }
+    ];
+
+    if (!isAdmin) {
+        chatConditionList.push({
+            $eq: ['$userId', new ObjectId(userId)]
+        });
+    }
+
     return await Chat.aggregate([ 
         {
             $match: {
                 $expr: {
-                    $and: [
-                        {
-                            $eq: ['$userId', new ObjectId(userId)]
-                        },
-                        {
-                            $eq: ['$assistantId', new ObjectId(assistantId)]
-                        }
-                    ]
+                    $and: chatConditionList
                 }
             }
         },
