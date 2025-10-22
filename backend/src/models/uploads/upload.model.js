@@ -5,7 +5,7 @@ async function addUpload(upload) {
 }
 
 async function findUpload(filter, excludeField) {
-    return await Message.find(filter, {
+    return await Upload.find(filter, {
         _id: 0,
         __v: 0,
         ...excludeField
@@ -14,7 +14,12 @@ async function findUpload(filter, excludeField) {
     .sort({ createdAt: 1 });
 }
 
+async function deleteUpload(filter = {}) {
+    return await Upload.deleteMany(filter);
+}
+
 module.exports = {
     addUpload,
-    findUpload
+    findUpload,
+    deleteUpload
 }

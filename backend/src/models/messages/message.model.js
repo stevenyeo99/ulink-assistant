@@ -14,7 +14,12 @@ async function findMessageByChatId(filter, excludeField) {
     .sort({ createdAt: 1 });
 }
 
+async function deleteMessage(filter = {}) {
+    return await Message.deleteMany(filter);
+}
+
 module.exports = {
     addMessage,
-    findMessageByChatId
+    findMessageByChatId,
+    deleteMessage
 }

@@ -72,9 +72,67 @@ async function getAllChats({ userId, assistantId, isAdmin }) {
     ]);
 }
 
+async function getAllChatByAssistant({ assistantId }) {
+    return await Chat.aggregate([
+        {
+            $match: {
+                $expr: {
+                    $eq: ['$assistantId', new ObjectId(assistantId)]
+                }
+            }
+        },
+        {
+            $lookup: {
+                from: 'users',
+                let: {
+                    userId: '$userId'
+                },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $eq: ['$_id', '$$userId']
+                            }
+                        }
+                    }
+                ],
+                as: 'users'
+            }
+        },
+        { $unwind: { path: '$users', preserveNullAndEmptyArrays: false } },
+        {
+            $lookup: {
+                from: 'messages',
+                let: {
+                    chatId: '$_id'
+                },
+                pipeline: [
+                    { $match: { $expr: { $eq: ['$chatId', '$$chatId'] } } },
+                    // INDICATOR FOR UPLOAD FILE EVENT ONLY TO SKIP LIKE GPT LOGIC.
+                    { $match: { $expr: { $eq: [{ $ifNull: ['$isOcr', false] }, false] } } },
+                    { $sort: { createdAt: 1 } },
+                    { $project: { _id: 0, role: 1, content: 1, createdAt: 1 } }
+                ],
+                as: 'messages'
+            }
+        },
+        {
+            $sort: {
+                updatedAt: 1
+            }
+        }
+    ]);
+}
+
+async function deleteChat(filter = {}) {
+    return await Chat.deleteMany(filter);
+}
+
 module.exports = {
     findChat,
     addChat,
     getAllChats,
-    saveChat
+    saveChat,
+    getAllChatByAssistant,
+    deleteChat
 };

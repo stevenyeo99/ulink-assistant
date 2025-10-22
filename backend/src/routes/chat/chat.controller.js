@@ -9,14 +9,16 @@ const { asssistantMap } = require('../assistant/assistant.controller');
 
 const { formatFileName } = require('../../utils/report-util');
 const { convertDocxToPdf } = require('../../utils/pdf-util');
+const { zip } = require('../../utils/archive-util');
 
 const { doTriggerOcr } = require('../../services/ocr-space/ocr-space');
 
-const { findChat, addChat, getAllChats, saveChat } = require('../../models/chats/chat.model');
-const { addMessage, findMessageByChatId } = require('../../models/messages/message.model');
-const { addUpload } = require('../../models/uploads/upload.model');
+const { findChat, addChat, getAllChats, saveChat, getAllChatByAssistant, deleteChat } = require('../../models/chats/chat.model');
+const { addMessage, findMessageByChatId, deleteMessage } = require('../../models/messages/message.model');
+const { addUpload, deleteUpload } = require('../../models/uploads/upload.model');
 const { getAsisstantKeyById, getListOfAssistant } = require('../../models/assistants/assistant.model');
 const { getUserById } = require('../../models/users/user.model');
+const { deleteSession } = require('../../models/sessions/session.model');
 
 // ***************************
 // Start Controller Function
@@ -434,14 +436,94 @@ async function doGenerateALLConversationHistoryReport(req, res) {
   // download / upload into google drive
   */
 
-  const listOfAssistant = await getListOfAssistant([], { enabled: true });
-  for (const assistant of listOfAssistant) {
-    const REPORT_ROOT_PATH = REPORT_FOLDER_PATH;
+  try {
+    const pathSegments = [
+      __dirname,
+      '..',
+      '..',
+      '..',
+      REPORT_FOLDER_PATH,
+      'EXP_ALL_CHAT'
+    ];
+    
+    const folderExport = path.join(...pathSegments);
+    if (!fs.existsSync(folderExport)) fs.mkdirSync(folderExport, { recursive: true });
 
+    const tmF = `${moment(new Date()).format('YYYYMMDD')}`;
+    const pathSegmentsTM = [...pathSegments, tmF];
+    const folderExportAll = path.join(...pathSegmentsTM);
+    if (!fs.existsSync(folderExportAll)) fs.mkdirSync(folderExportAll, { recursive: true });
 
+    // Generate Assistant/Users/{report} level
+    const listOfAssistant = await getListOfAssistant([], { enabled: true });
+    for (const assistant of listOfAssistant) {
+      
+      const asssistantCode = assistant?.code;
+
+      const folderAssistant = path.join(...pathSegmentsTM, asssistantCode);
+      if (!fs.existsSync(folderAssistant)) fs.mkdirSync(folderAssistant, { recursive: true });
+
+      // list of chat by assistant
+      const chatAssistants = await getAllChatByAssistant({ assistantId: assistant?._id });
+
+      let iteration = 1;
+      for (const chatAsst of chatAssistants) {
+
+        const userFolder = [...pathSegmentsTM, asssistantCode, chatAsst?.users?.username];
+        const userNameFolder = path.join(...userFolder);
+        if (!fs.existsSync(userNameFolder)) fs.mkdirSync(userNameFolder, { recursive: true });
+
+        if (chatAsst && chatAsst?.messages?.length > 1) {
+          
+          const fileName = formatFileName(`chat_${moment(chatAsst?.createdAt).format('yyyymmdd')}_${iteration}`);
+          const file = path.join(...userFolder, fileName);
+
+          const stream = fs.createWriteStream(file);
+
+          const chat = {
+            users,
+            messages,
+            ...filter
+          } = chatAsst;
+
+          await doGenerateReport(stream, chat, assistant, chatAsst?.messages);
+          iteration++;
+        }
+      }
+    }
+
+    const zipPath = path.join(...pathSegments, `${tmF}.zip`);
+    const output = fs.createWriteStream(zipPath);
+
+    zip(folderExportAll, output);
+
+    output.on('close', () => {
+      fs.rm(folderExportAll, { recursive: true, force: true }, (err) => {
+        if (err) {
+          console.error('Error deleting folder:', err);
+        } else {
+          console.log('Folder and its contents deleted successfully');
+        }
+      });
+    });
+
+    // delete all records
+    // Upload -> Message -> Chat -> Session
+    await deleteUpload();
+    await deleteMessage();
+    await deleteChat();
+    await deleteSession();
+
+    // upload to ULINK google drive
+
+    return res.status(200).json({
+      message: 'Succesfull Export All Chat Conversation',
+      path: `${zipPath}`
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: 'System Error during process Export All Chat'});
   }
-
-  return res.status(200).json(listOfAssistant);
 }
 
 // End Controller Function
@@ -458,24 +540,27 @@ async function doGenerateReport(stream, existingChat, assistant, chatMessages) {
 
     doc.pipe(stream);
 
+    const timeNRoman = path.join(__dirname, '..', '..', '..', 'fonts', 'times.ttf');
+    const timeNRomanBold = path.join(__dirname, '..', '..', '..', 'fonts', 'timesbd.ttf');
+
     const margin = 48;
     const pageW = doc.page.width;
     const pageH = doc.page.height;
     const maxW = pageW - margin * 2;
 
-    doc.font("Helvetica-Bold").fontSize(16).text(`Chat with ${assistant?.displayName || "Assistant"}`, margin);
+    doc.font(timeNRomanBold).fontSize(16).text(`Chat with ${assistant?.displayName || "Assistant"}`, margin);
     doc.moveDown(0.6);
-    doc.font("Helvetica").fontSize(11).text(`Started: ${moment(existingChat.createdAt).format('DD/MM/YYYY HH:MM')}`, margin);
+    doc.font(timeNRoman).fontSize(11).text(`Started: ${moment(existingChat.createdAt).format('DD/MM/YYYY HH:MM')}`, margin);
     doc.moveDown(0.4);
     doc.moveTo(margin, doc.y).lineTo(pageW - margin, doc.y).strokeColor("#dddddd").stroke();
     doc.moveDown(0.6);
 
     doc.fontSize(12);
     for (const m of (chatMessages || [])) {
-      doc.font('Helvetica-Bold').text(`(${moment(m.createdAt).format('DD/MM/YYYY HH:MM')}) - `, { continued: true });
-      doc.font("Helvetica-Bold").text(m.role === "user" ? "User:" : "Assistant:", { width: maxW });
+      doc.font(timeNRomanBold).text(`(${moment(m.createdAt).format('DD/MM/YYYY HH:MM')}) - `, { continued: true });
+      doc.font(timeNRomanBold).text(m.role === "user" ? "User:" : "Assistant:", { width: maxW });
       doc.moveDown(0.2);
-      doc.font("Helvetica").text(String(m.content ?? ""), { width: maxW });
+      doc.font(timeNRoman).text(String(m.content ?? ""), { width: maxW });
       doc.moveDown(0.7);
       if (doc.y > pageH - margin) doc.addPage();
     }
@@ -484,8 +569,6 @@ async function doGenerateReport(stream, existingChat, assistant, chatMessages) {
     doc.fontSize(10).fillColor("#777777").text("Generated by Ulink Assist", margin, pageH - margin, { lineBreak: false });
 
     doc.end();
-
-    console.log('FINISH')
   } catch (err) {
     console.log(err); 
     throw err;
