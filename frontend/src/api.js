@@ -19,6 +19,7 @@ import {
   postChatStreamingV2API,
   retrieveChatHistory,
   doDownloadChatHistReport,
+  doExportAllChatHistories
 } from './integrations/chat-integration';
 
 
@@ -311,4 +312,16 @@ export async function sendMessage(botKey, sessionId, text, setIsTyping, setSessi
 export async function doExportChat(sessionId) {
 
   await doDownloadChatHistReport(sessionId)
+}
+
+export async function doBackUpAllChat({ setSessions, botKey }) {
+
+  // Call Export All Chat API
+  await doExportAllChatHistories();
+
+  // Reload State
+  localStorage.removeItem(LS_CHAT);
+  if (botKey) {
+    setSessions(await listSessions(botKey));
+  }
 }

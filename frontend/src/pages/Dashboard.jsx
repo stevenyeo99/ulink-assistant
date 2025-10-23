@@ -9,12 +9,15 @@ import {
   getBotName, listChatbots,
   listSessions, createSession, getSession,
   sendMessage,
-  doExportChat
+  doExportChat,
+  getUser,
+  doBackUpAllChat
 } from "../api.js";
 
 // util component
 import ChatUploadButton from '../components/utils/ChatUploadButton';
 import { TypingDots } from '../components/utils/TypingDots.jsx';
+import LoadingSpinner from "../components/utils/LoadingSpinner.jsx";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -38,6 +41,9 @@ export default function Dashboard() {
   const [attachments, setAttachments] = useState([]);
   const [uploading, setUploading] = useState(false);
 
+  // Loading Spinner
+  const [loading, setLoading] = useState(false);
+
   const onPickFiles = (files) => {
     const withIds = files.map(f => ({ id: crypto.randomUUID(), file: f }));
     setAttachments(prev => [...prev, ...withIds]);
@@ -53,6 +59,8 @@ export default function Dashboard() {
       setSessionId(""); 
       
       return; 
+    } else {
+      setSessionId('');
     }
 
     (async () => {
@@ -82,6 +90,24 @@ export default function Dashboard() {
     setSessionId(s.id);
     setSendDisabled(false);
     setInput("");
+  }
+
+  async function doExportAll() {
+    const confirmBackup = window.confirm('Are you sure want backup, once backup all chat history will be uploaded into Zoho Work Drive & All History Records Deleted From System.');
+    if (confirmBackup) {
+      setLoading(true);
+
+      // trigger the Export All Chat API
+      await doBackUpAllChat({ setSessions, botKey });
+
+      setLoading(false);
+
+      alert('Chat Succesfully Backup into Zoho Work Drive.');
+
+      return;
+    } else {
+      return;
+    }
   }
 
   async function onSend(e) {
@@ -121,6 +147,8 @@ export default function Dashboard() {
 
   const btnSendDisabled = (!botKey || !sessionId || (!input.trim() && attachments?.length === 0));
 
+  const authUser = getUser();
+
   return (
     <div className="console-page">
       <div className="console-wrap">
@@ -146,10 +174,16 @@ export default function Dashboard() {
                   <option key={b.key} value={b.key}>{b.name}</option>
                 ))}
               </select>
-              <div className="row" style={{ justifyContent: "space-between" }}>
+              <div className="row">
                 <button className="button ghost" disabled={!botKey} onClick={onNewChat}>
                   New chat
                 </button>
+
+                { authUser?.role === 'admin' && (
+                  <button className='button ghost' onClick={doExportAll}>
+                    Backup
+                  </button>
+                )}
                 {/* TODO: not show this features at DAY1 */}
                 {/* <button className="button ghost" disabled={!botKey} onClick={onRenameBot}>
                   Rename
@@ -242,6 +276,8 @@ export default function Dashboard() {
           </section>
         </div>
       </div>
+
+      <LoadingSpinner show={loading} />
     </div>
   );
 }

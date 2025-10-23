@@ -1,4 +1,4 @@
-import { API_BASE, POST_STREAM_CHAT_PATH, GET_LIST_HISTORY_PATH, POST_UPDATE_CHAT_TITLE_PATH, GET_CHAT_HIST_REPORT_PATH, POST_STREAM_CHAT_V2_PATH } from "../config";
+import { API_BASE, POST_STREAM_CHAT_PATH, GET_LIST_HISTORY_PATH, POST_UPDATE_CHAT_TITLE_PATH, GET_CHAT_HIST_REPORT_PATH, POST_STREAM_CHAT_V2_PATH, GET_EXPORT_ALL_CHAT_PATH } from "../config";
 
 // v1 chat stream
 export async function postChatStreamingAPI(payload) {
@@ -187,4 +187,17 @@ export async function doDownloadChatHistReport(sessionId) {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+export async function doExportAllChatHistories() {
+
+  const response = await fetch(API_BASE + GET_EXPORT_ALL_CHAT_PATH, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  });
+
+  const json = await response.json();
+  return json;
 }

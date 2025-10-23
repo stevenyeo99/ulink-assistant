@@ -15,3 +15,4 @@ export const GET_LIST_HISTORY_PATH = import.meta.env.GET_LIST_HISTORY_PATH || '/
 export const GET_LIST_MESSAGE_PER_SESSION_PATH = import.meta.env.GET_LIST_MESSAGE_PER_SESSION_PATH || '/api/chats/messages';
 export const GET_CHAT_HIST_REPORT_PATH = import.meta.env.GET_CHAT_HIST_REPORT_PATH || '/api/chats/history/report';
 export const POST_UPDATE_CHAT_TITLE_PATH = import.meta.env.POST_UPDATE_CHAT_TITLE_PATH || '/api/chats/title/update';
+export const GET_EXPORT_ALL_CHAT_PATH = import.meta.env.GET_EXPORT_ALL_CHAT_PATH || '/api/chats/history/all/report';
