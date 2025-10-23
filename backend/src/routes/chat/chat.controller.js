@@ -12,6 +12,7 @@ const { convertDocxToPdf } = require('../../utils/pdf-util');
 const { zip } = require('../../utils/archive-util');
 
 const { doTriggerOcr } = require('../../services/ocr-space/ocr-space');
+const { uploadToWorkDrive } = require('../../services/zoho/workdrive/workdrive-upload');
 
 const { findChat, addChat, getAllChats, saveChat, getAllChatByAssistant, deleteChat } = require('../../models/chats/chat.model');
 const { addMessage, findMessageByChatId, deleteMessage } = require('../../models/messages/message.model');
@@ -497,7 +498,7 @@ async function doGenerateALLConversationHistoryReport(req, res) {
 
     zip(folderExportAll, output);
 
-    output.on('close', () => {
+    output.on('close', async () => {
       fs.rm(folderExportAll, { recursive: true, force: true }, (err) => {
         if (err) {
           console.error('Error deleting folder:', err);
@@ -505,6 +506,9 @@ async function doGenerateALLConversationHistoryReport(req, res) {
           console.log('Folder and its contents deleted successfully');
         }
       });
+
+      // upload to ULINK Zoho WorkDrive
+      await uploadToWorkDrive(zipPath, `${tmF}.zip`);
     });
 
     // delete all records
@@ -513,8 +517,6 @@ async function doGenerateALLConversationHistoryReport(req, res) {
     await deleteMessage();
     await deleteChat();
     await deleteSession();
-
-    // upload to ULINK google drive
 
     return res.status(200).json({
       message: 'Succesfull Export All Chat Conversation',

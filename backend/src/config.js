@@ -14,6 +14,14 @@ const configs = {
     UPLOAD_PATH: process.env.UPLOAD_PATH || 'ocr-docs',
     UPLOAD_END: process.env.UPLOAD_END || 'tmp',
 
+    // ZOHO WorkDrive
+    ZOHO_CLIENT_ID: process.env.ZOHO_CLIENT_ID || '',
+    ZOHO_CLIENT_SECRET: process.env.ZOHO_CLIENT_SECRET || '',
+    ZOHO_REFRESH_TOKEN: process.env.ZOHO_REFRESH_TOKEN || '',
+    ZOHO_ACCOUNTS_BASE: process.env.ZOHO_ACCOUNTS_BASE || '',
+    ZOHO_WORKDRIVE_BASE: process.env.ZOHO_WORKDRIVE_BASE || '',
+    WORKDRIVE_ASSISTANT_PARENT_ID: process.env.WORKDRIVE_ASSISTANT_PARENT_ID || '',
+
     // MONGO DB URI
     MONGODB_URI: process.env.MONGODB_URI || 'a'
 };
