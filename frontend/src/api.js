@@ -23,6 +23,11 @@ import {
   doExportAllChatHistories
 } from './integrations/chat-integration';
 
+import {
+  getListOfUsers,
+  postNewUser
+} from './integrations/user-integration';
+
 
 // ====== Small HTTP helper ======
 async function request(path, opts = {}) {
@@ -117,8 +122,6 @@ function saveBotLabels(map) {
 
 // Public helpers for UI
 export async function listChatbots(filter = "") {
-  const labels = loadBotLabels();
-
   const user = getUser();
   const userId = user?.id;
 
@@ -128,7 +131,7 @@ export async function listChatbots(filter = "") {
     const assistMap = (
       {
         key: b._id,
-        name: labels[b._id]?.trim() || b.displayName,
+        name: b.displayName,
         defaultName: b.displayName,
         isFirstReply: b.isFirstReply
       }
@@ -338,19 +341,14 @@ export async function doBackUpAllChat({ setSessions, botKey }) {
 
 // --- Admin (requires token) ---
 export async function adminListUsers() {
-  const token = getToken();
-  return request("/api/admin/users", {
-    method: "GET",
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  return await getListOfUsers();
 }
 
-export async function adminCreateUser({ username, password, allowedAssistantIds = [] }) {
-  const token = getToken();
-  return request("/api/admin/users", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ username, password, allowedAssistantIds }),
+export async function adminCreateUser({ username, password, assistantIds = [] }) {
+  return await postNewUser({
+    username,
+    password,
+    assistantIds
   });
 }
 

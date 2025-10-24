@@ -57,7 +57,7 @@ export default function UserList({ assistants = [] }) {
             <div>
               <div style={{ fontWeight: 700 }}>{u.username}</div>
               <div className="muted" style={{ fontSize: 13 }}>
-                Allowed assistants: { (u.allowedAssistantIds || []).map(id => (assistants.find(a => a.key === id)?.name || id)).join(", ") || "—" }
+                Allowed assistants: { (u.allowedAssistantIds || []).map(id => (assistants.find(a => a.key === id)?.defaultName)).join(", ") || "—" }
               </div>
             </div>
 

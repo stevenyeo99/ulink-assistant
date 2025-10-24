@@ -4,10 +4,11 @@ const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../../config.js');
 
 const User = require('../../models/users/user.mongo.js');
-const { doRetrieveAssistantIdByUserId, doApplyUserAssistant } = require('../../models/user-assistants/user-assistant.model.js');
+const { doApplyUserAssistant } = require('../../models/user-assistants/user-assistant.model.js');
 const { getListOfAssistant } = require('../../models/assistants/assistant.model.js');
+const { retrieveUsers } = require('../../models/users/user.model.js');
 
-async function register(req, res, next) {
+async function create(req, res, next) {
   try {
     const { username, password, assistantIds } = req.body || {};
     if (!username || !password) return res.status(400).json({ error: 'username and password required' });
@@ -50,7 +51,14 @@ async function login(req, res, next) {
   }
 };
 
+async function getListOfUsers(req, res) {
+  const users = await retrieveUsers({ role: 'user' });
+
+  return res.json(users).status(200);
+}
+
 module.exports = {
-  register,
-  login
+  create,
+  login,
+  getListOfUsers
 }

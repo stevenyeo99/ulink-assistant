@@ -25,7 +25,7 @@ export default function CreateUserForm({ assistants = [] }) {
       await adminCreateUser({
         username: username.trim(),
         password,
-        allowedAssistantIds: selectedAssistants
+        assistantIds: selectedAssistants
       });
       setMsg({ type: "success", text: "User created" });
       setUsername("");
