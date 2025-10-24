@@ -5,12 +5,11 @@ import { useNavigate } from "react-router-dom";
 import '../components/utils/ChatUploadButton.css';
 
 import {
-  getToken, clearAuth,
+  getToken, clearAuth, getUser,
   getBotName, listChatbots,
   listSessions, createSession, getSession,
   sendMessage,
   doExportChat,
-  getUser,
   doBackUpAllChat,
   appendMessage
 } from "../api.js";
@@ -20,15 +19,13 @@ import ChatUploadButton from '../components/utils/ChatUploadButton';
 import { TypingDots } from '../components/utils/TypingDots.jsx';
 import LoadingSpinner from "../components/utils/LoadingSpinner.jsx";
 
+import AdminPanel from "./AdminPanel.jsx";
+
 export default function Dashboard() {
   const navigate = useNavigate();
   useEffect(() => { if (!getToken()) navigate("/login"); }, [navigate]);
 
-  // bots + filterable UI
-  // const [bots, setBots] = useState(() => listChatbots());
-  // const [botFilter, setBotFilter] = useState("");
   const [filteredBots, setFilteredBots] = useState([]);
-
   const [botKey, setBotKey] = useState("");
   const [sessions, setSessions] = useState([]);
   const [sessionId, setSessionId] = useState("");
@@ -38,21 +35,22 @@ export default function Dashboard() {
   const [isTyping, setIsTyping] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
-  // upload field
   const [attachments, setAttachments] = useState([]);
   const [uploading, setUploading] = useState(false);
 
   // Loading Spinner
   const [loading, setLoading] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+
+  const user = getUser();
+  const isAdmin = (user?.role === "admin") || 'user';
 
   const onPickFiles = (files) => {
     const withIds = files.map(f => ({ id: crypto.randomUUID(), file: f }));
     setAttachments(prev => [...prev, ...withIds]);
   };
 
-  const removeAttachment = (id) => {
-    setAttachments(prev => prev.filter(a => a.id !== id));
-  }
+  const removeAttachment = (id) => setAttachments(prev => prev.filter(a => a.id !== id));
 
   useEffect(() => {
     if (!botKey) { 
@@ -68,21 +66,13 @@ export default function Dashboard() {
       const doGetListSession = await listSessions(botKey);
       setSessions(doGetListSession);
     })();
-
   }, [botKey]);
 
-  useEffect(() => {
-     (async () => {
-        setFilteredBots(await listChatbots());
-      })();
-  }, []);
+  useEffect(() => { (async () => setFilteredBots(await listChatbots()) )(); }, []);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [sessionId, sessions]);
 
-  const currentSession = useMemo(
-    () => (sessionId ? getSession(sessionId) : null),
-    [sessionId, sessions]
-  );
+  const currentSession = useMemo(() => (sessionId ? getSession(sessionId) : null), [sessionId, sessions]);
 
   async function onNewChat() {
     if (!botKey) return;
@@ -124,11 +114,12 @@ export default function Dashboard() {
 
     const text = input.trim();
     if ((!text && attachments?.length === 0 ) || !botKey || !sessionId) {
+      setIsSending(false);
+      setUploading(false);
       return;
     }
-    
-    setSendDisabled(true);
 
+    setSendDisabled(true);
     const attachmentFiles = attachments.map(a => a.file);
     await sendMessage(botKey, sessionId, text, setIsTyping, setSessions, attachmentFiles, false);
 
@@ -139,18 +130,7 @@ export default function Dashboard() {
     setIsSending(false);
   }
 
-  async function doExportChatEvent() {
-    await doExportChat(sessionId);
-  }
-
-  // function onRenameBot() {
-  //   if (!botKey) return;
-  //   const currentName = getBotName(botKey);
-  //   const next = prompt("Rename chatbot (leave blank to reset to default):", currentName);
-  //   if (next === null) return; // cancel
-  //   setBotName(botKey, next);
-  //   setBots(listChatbots(botFilter));
-  // }
+  async function doExportChatEvent() { await doExportChat(sessionId); }
 
   const btnSendDisabled = (!botKey || !sessionId || (!input.trim() && attachments?.length === 0));
 
@@ -160,27 +140,15 @@ export default function Dashboard() {
     <div className="console-page">
       <div className="console-wrap">
         <div className="console-grid">
-          {/* Left panel: bot dropdown + history */}
+          {/* Left panel */}
           <aside className="sidebar">
             <div className="stack">
               <label style={{ fontWeight: 700 }}>Assistant</label>
-              {/* TODO: not show this features at DAY1 */}
-              {/* <input
-                className="input"
-                placeholder="Filter chatbots…"
-                value={botFilter}
-                onChange={e => setBotFilter(e.target.value)}
-              /> */}
-              <select
-                className="input"
-                value={botKey}
-                onChange={e => setBotKey(e.target.value)}
-              >
+              <select className="input" value={botKey} onChange={e => setBotKey(e.target.value)}>
                 <option value="">— Select a Assistant —</option>
-                {filteredBots.map(b => (
-                  <option key={b.key} value={b.key}>{b.name}</option>
-                ))}
+                {filteredBots.map(b => (<option key={b.key} value={b.key}>{b.name}</option>))}
               </select>
+
               <div className="row">
                 <button className="button ghost" disabled={!botKey} onClick={onNewChat}>
                   New chat
@@ -200,12 +168,8 @@ export default function Dashboard() {
 
             <div style={{ fontWeight: 700, marginTop: 10 }}>History</div>
             <div className="history">
-              {sessions.length === 0 ? (
-                <div className="muted">No chats yet.</div>
-              ) : sessions?.map(s => (
-                <button key={s.id}
-                  className={"history-item" + (s.id === sessionId ? " active" : "")}
-                  onClick={() => setSessionId(s.id)}>
+              {sessions.length === 0 ? <div className="muted">No chats yet.</div> : sessions.map(s => (
+                <button key={s.id} className={"history-item" + (s.id === sessionId ? " active" : "")} onClick={() => setSessionId(s.id)}>
                   <div className="title">{s.title || "Untitled"}</div>
                   <div className="meta">{new Date(s.updatedAt).toLocaleString()}</div>
                 </button>
@@ -213,63 +177,43 @@ export default function Dashboard() {
             </div>
           </aside>
 
-          {/* Right panel: chat window */}
+          {/* Right panel */}
           <section className="chat">
             <div className="chat-header">
               <div className="row" style={{ gap: 8, alignItems: "center" }}>
                 <div className="logo-ring small" />
                 <strong>{botKey ? getBotName(botKey, filteredBots) : "Pick a Assistant"}</strong>
               </div>
+
               <div className="row" style={{ gap: 8 }}>
-                <button className="button ghost" onClick={() => { clearAuth(); navigate("/login"); }}>
-                  Logout
-                </button>
-                <button className="button ghost" disabled={!sessionId} onClick={doExportChatEvent}>
-                  Export Chat
-                </button>
+                {isAdmin && <button className="button ghost" onClick={() => setShowAdmin(true)}>Admin Panel</button>}
+                <button className="button ghost" onClick={() => { clearAuth(); navigate("/login"); }}>Logout</button>
+                <button className="button ghost" disabled={!sessionId} onClick={doExportChatEvent}>Export Chat</button>
               </div>
             </div>
 
             <div className="chat-messages">
               {
-                !botKey ? (
-                  <div className="muted">Select a Assistant to start.</div>
-                ) : !sessionId ? 
-                  (
-                    <div className="muted">Create a new chat or pick one from history.</div>
-                  ) : 
-                  (
-                    (
-                      currentSession?.messages || []).map((m, index) => (
-                        <div key={index} className={"bubble " + (m.role === "user" ? "user" : "assistant")}>
-                          <div className="bubble-inner">
-                            <p>{m.content}</p>
-                          </div>
-                        </div>
-                      )
-                    )
-                  )
+                !botKey ? <div className="muted">Select a Assistant to start.</div> :
+                !sessionId ? <div className="muted">Create a new chat or pick one from history.</div> :
+                  (currentSession?.messages || []).map((m, index) => (
+                    <div key={index} className={"bubble " + (m.role === "user" ? "user" : "assistant")}>
+                      <div className="bubble-inner"><p>{m.content}</p></div>
+                    </div>
+                  ))
               }
               {isTyping && <TypingDots />}
               <div ref={endRef} />
             </div>
 
-            <form className="composer">
+            <form className="composer" onSubmit={onSend}>
               <div className='upload-button-wrap'>
                 <ChatUploadButton disabled={!botKey || !sessionId || sendDisabled || uploading} fileCount={attachments.length} onFiles={onPickFiles} />
               </div>
 
-              <input
-                className="input input-message"
-                placeholder={!botKey ? "Choose a Assistant first" : "Type a message…"}
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                disabled={!botKey || !sessionId || sendDisabled || uploading}
-              />
+              <input className="input input-message" placeholder={!botKey ? "Choose a Assistant first" : "Type a message…"} value={input} onChange={e => setInput(e.target.value)} disabled={!botKey || !sessionId || sendDisabled || uploading} />
+              <button className="button primary send-btn" disabled={btnSendDisabled || sendDisabled || uploading}>{isSending ? "Sending..." : "Send"}</button>
 
-              <button className="button primary send-btn" disabled={btnSendDisabled || sendDisabled || uploading} onClick={onSend}>{isSending ? "Sending..." : "Send"}</button>
-
-              {/* Inline attachment indicator row */}
               <div className="attachments-row">
                 {attachments.map(({ id, file }) => (
                   <div key={id} className="chip" title={file.name}>
@@ -285,6 +229,7 @@ export default function Dashboard() {
       </div>
 
       <LoadingSpinner show={loading} />
+      {showAdmin && <AdminPanel onClose={() => setShowAdmin(false)} />}
     </div>
   );
 }

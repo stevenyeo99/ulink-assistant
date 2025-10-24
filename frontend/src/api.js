@@ -1,3 +1,4 @@
+// src/api.js
 import {
   API_BASE,
   LOGIN_PATH,
@@ -48,16 +49,16 @@ export function setAuth(token, user) {
   if (user)  localStorage.setItem(LS_USER, JSON.stringify(user));
 }
 
-export function getToken() { 
-  return localStorage.getItem(LS_TOKEN) || ""; 
+export function getToken() {
+  return localStorage.getItem(LS_TOKEN) || "";
 }
 
 export function getUser() {
-  try { 
-    return JSON.parse(localStorage.getItem(LS_USER) || "null"); 
+  try {
+    return JSON.parse(localStorage.getItem(LS_USER) || "null");
   }
-  catch { 
-    return null; 
+  catch {
+    return null;
   }
 }
 
@@ -140,9 +141,9 @@ export async function listChatbots(filter = "") {
   const q = filter.toLowerCase();
 
   return out.filter(b =>
-    b.name.toLowerCase().includes(q) ||
-    b.defaultName.toLowerCase().includes(q) ||
-    b.key.toLowerCase().includes(q)
+    (b.name || "").toLowerCase().includes(q) ||
+    (b.defaultName || "").toLowerCase().includes(q) ||
+    (b.key || "").toLowerCase().includes(q)
   );
 }
 
@@ -162,55 +163,56 @@ export function setBotName(key, newName) {
     map[key] = trimmed;
   }
   saveBotLabels(map);
-  return listChatbots(); // convenience return
+  // convenience: return current list (note: this returns a Promise because listChatbots is async)
+  return listChatbots();
 }
 
 // ====== Chat sessions (localStorage) ======
 const LS_CHAT = "ulink.chat.v1";
 
 function loadState() {
-  try { 
-    return JSON.parse(localStorage.getItem(LS_CHAT)) || { sessions: [] }; 
+  try {
+    return JSON.parse(localStorage.getItem(LS_CHAT)) || { sessions: [] };
   }
-  catch { 
-    return { 
-      sessions: [] 
-    }; 
+  catch {
+    return {
+      sessions: []
+    };
   }
 }
 
-function saveState(state) { 
-  localStorage.setItem(LS_CHAT, JSON.stringify(state)); 
+function saveState(state) {
+  localStorage.setItem(LS_CHAT, JSON.stringify(state));
 }
 
 export async function listSessions(botKey) {
 
   const user = getUser();
   const userId = user?.id;
-  
-  let sessionBotStorage = loadState().sessions
+
+  let sessionBotStorage = (loadState().sessions || [])
     .filter(s => s.botKey === botKey)
     .sort((a, b) => (new Date(b.updatedAt)) - (new Date(a.updatedAt)));
 
-  if (!sessionBotStorage || sessionBotStorage?.length === 0) {
-    // if session does not exist, do retrieve from backend
-    const backendSession = await retrieveChatHistory({userId, assistantId: botKey});
-    
-    if (backendSession && backendSession?.length > 0) {
-        sessionBotStorage = backendSession.map((data) => {
-          return {
-            id: data?.sessionId,
-            botKey: data?.assistantId,
-            title: data?.title,
-            messages: data?.messages,
-            createdAt: data?.createdAt,
-            updatedAt: data?.updatedAt
-          }
-        });
+  if (!sessionBotStorage || sessionBotStorage.length === 0) {
+    // if session does not exist, retrieve from backend
+    const backendSession = await retrieveChatHistory({ userId, assistantId: botKey });
 
-        const state = loadState();
-        state.sessions.push(...sessionBotStorage);
-        saveState(state);
+    if (backendSession && backendSession.length > 0) {
+      sessionBotStorage = backendSession.map((data) => {
+        return {
+          id: data?.sessionId,
+          botKey: data?.assistantId,
+          title: data?.title,
+          messages: data?.messages || [],
+          createdAt: data?.createdAt,
+          updatedAt: data?.updatedAt
+        };
+      });
+
+      const state = loadState();
+      state.sessions.push(...sessionBotStorage);
+      saveState(state);
     }
   }
 
@@ -248,14 +250,14 @@ export function getSession(id) {
 export function appendMessage(sessionId, role, content) {
   const state = loadState();
   const session = state.sessions.find(s => s.id === sessionId);
-  
+
   if (!session) return null;
   session.messages.push({ role, content, createdAt: Date.now() });
-  
+
   session.updatedAt = Date.now();
 
   saveState(state);
-  
+
   return session;
 }
 
@@ -276,7 +278,11 @@ export async function sendMessage(botKey, sessionId, text, setIsTyping, setSessi
       title = 'Upload Documents';
     }
 
-    await doUpdateChatTitle({ sessionId, title });
+    try {
+      await doUpdateChatTitle({ sessionId, title });
+    } catch (err) {
+      console.warn("doUpdateChatTitle failed:", err);
+    }
 
     existingSession.title = title;
 
@@ -286,7 +292,7 @@ export async function sendMessage(botKey, sessionId, text, setIsTyping, setSessi
   if (text && !isFirstReply) {
     appendMessage(sessionId, "user", text);
   }
-  
+
   const authUser = getUser();
   const userId = authUser?.id;
 
@@ -315,8 +321,7 @@ export async function sendMessage(botKey, sessionId, text, setIsTyping, setSessi
 }
 
 export async function doExportChat(sessionId) {
-
-  await doDownloadChatHistReport(sessionId)
+  await doDownloadChatHistReport(sessionId);
 }
 
 export async function doBackUpAllChat({ setSessions, botKey }) {
@@ -329,4 +334,39 @@ export async function doBackUpAllChat({ setSessions, botKey }) {
   if (botKey) {
     setSessions(await listSessions(botKey));
   }
+}
+
+// --- Admin (requires token) ---
+export async function adminListUsers() {
+  const token = getToken();
+  return request("/api/admin/users", {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function adminCreateUser({ username, password, allowedAssistantIds = [] }) {
+  const token = getToken();
+  return request("/api/admin/users", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ username, password, allowedAssistantIds }),
+  });
+}
+
+export async function adminDeleteUser(userId) {
+  const token = getToken();
+  return request(`/api/admin/users/${userId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function adminResetUserPassword(userId, newPassword) {
+  const token = getToken();
+  return request(`/api/admin/users/${userId}/reset-password`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ password: newPassword }),
+  });
 }
