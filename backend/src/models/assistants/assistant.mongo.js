@@ -32,6 +32,10 @@ const AssistantSchema = new mongoose.Schema({
     systemPromptFile: {
         type: String,
         required: true
+    },
+    isFirstReply: {
+        type: Boolean,
+        required: true
     }
 });
 

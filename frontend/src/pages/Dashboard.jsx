@@ -11,7 +11,8 @@ import {
   sendMessage,
   doExportChat,
   getUser,
-  doBackUpAllChat
+  doBackUpAllChat,
+  appendMessage
 } from "../api.js";
 
 // util component
@@ -90,6 +91,12 @@ export default function Dashboard() {
     setSessionId(s.id);
     setSendDisabled(false);
     setInput("");
+
+    // isFirstReply flag do trigger this (Assistant begin chat first)
+    const currentAssistant = filteredBots.find(filter => filter.key === botKey);
+    if (currentAssistant && currentAssistant?.isFirstReply) {
+      await sendMessage(botKey, s.id, 'Hi', setIsTyping, setSessions, [], true);
+    }
   }
 
   async function doExportAll() {
@@ -123,7 +130,7 @@ export default function Dashboard() {
     setSendDisabled(true);
 
     const attachmentFiles = attachments.map(a => a.file);
-    await sendMessage(botKey, sessionId, text, setIsTyping, setSessions, attachmentFiles);
+    await sendMessage(botKey, sessionId, text, setIsTyping, setSessions, attachmentFiles, false);
 
     setAttachments([]);
     setUploading(false);

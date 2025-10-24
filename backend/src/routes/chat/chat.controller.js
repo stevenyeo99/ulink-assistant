@@ -293,6 +293,7 @@ async function doStreamChatV2(req, res) {
 
     let existingChat = await doCreateNewChat({ userId, assistantId, sessionId });
     let history = await findMessageByChatId({ chatId: existingChat._id, isOcr: false}, {createdAt: 0, chatId: 0, updatedAt: 0, isOcr: 0});
+    let curAssistant = await getAsisstantKeyById(assistantId);
 
     // SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
@@ -373,12 +374,19 @@ async function doStreamChatV2(req, res) {
       }
     }
 
+    // isFirstReply & no history messages, the first message will be isOcr = true (ex: FM Clinic Case)
+    if (history.length === 0 && curAssistant && curAssistant?.isFirstReply === true) {
+      isOcr = true;
+    }  
+
     // Store User Messages
     const userMsg = await addMessage({
       chatId: existingChat?._id,
       role: 'user',
       content: content,
-      isOcr: isOcr // if upload docs meaning OCR & skip from display chat history like OpenAI
+      isOcr: isOcr 
+      // if upload docs meaning OCR & skip from display chat history like OpenAI
+      // also for isFirstReply use flag isOcr
     });
 
     if (userMsg && fileObjs?.length) {

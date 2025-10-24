@@ -129,6 +129,7 @@ export async function listChatbots(filter = "") {
         key: b._id,
         name: labels[b.key]?.trim() || b.displayName,
         defaultName: b.displayName,
+        isFirstReply: b.isFirstReply
       }
     );
 
@@ -264,12 +265,16 @@ function fallbackTitle(message) {
 }
 
 // Demo reply for now — replace with real backend call later.
-export async function sendMessage(botKey, sessionId, text, setIsTyping, setSessions, attachmentFiles = []) {
+export async function sendMessage(botKey, sessionId, text, setIsTyping, setSessions, attachmentFiles = [], isFirstReply = false) {
   // Update Chat title API
   const state = loadState();
   const existingSession = state.sessions.find(s => s.id === sessionId);
   if (existingSession?.messages?.length === 0) {
-    const title = fallbackTitle(text);
+    
+    let title = fallbackTitle(text);
+    if (isFirstReply) {
+      title = 'Upload Documents';
+    }
 
     await doUpdateChatTitle({ sessionId, title });
 
@@ -278,7 +283,7 @@ export async function sendMessage(botKey, sessionId, text, setIsTyping, setSessi
     saveState(state);
   }
 
-  if (text) {
+  if (text && !isFirstReply) {
     appendMessage(sessionId, "user", text);
   }
   
