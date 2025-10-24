@@ -43,7 +43,7 @@ export default function Dashboard() {
   const [showAdmin, setShowAdmin] = useState(false);
 
   const user = getUser();
-  const isAdmin = (user?.role === "admin") || 'user';
+  const isAdmin = (user?.role === "admin") || false;
 
   const onPickFiles = (files) => {
     const withIds = files.map(f => ({ id: crypto.randomUUID(), file: f }));
