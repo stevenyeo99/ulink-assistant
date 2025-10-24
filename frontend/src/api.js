@@ -128,7 +128,7 @@ export async function listChatbots(filter = "") {
     const assistMap = (
       {
         key: b._id,
-        name: labels[b.key]?.trim() || b.displayName,
+        name: labels[b._id]?.trim() || b.displayName,
         defaultName: b.displayName,
         isFirstReply: b.isFirstReply
       }
