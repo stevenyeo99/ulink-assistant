@@ -3,7 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import Login from "./pages/Login.jsx";
 import Signup from "./pages/Signup.jsx";
-import Dashboard from "./pages/Dashboard.jsx"; // <-- ensure .jsx here
+import Dashboard from "./pages/Dashboard.jsx";
+import AdminPanel from "./pages/AdminPanel.jsx";
 import { getToken } from "./api.js";
 
 function Protected({ children }) {
@@ -21,6 +22,14 @@ export default function App() {
           element={
             <Protected>
               <Dashboard />
+            </Protected>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <Protected>
+              <AdminPanel />
             </Protected>
           }
         />
