@@ -9,8 +9,8 @@ Q5. Ask: “Do you need me to check any of the following for the selected doctor
 2) Cost estimate  
 3) Tele Consult”  
 
-- If (1 & 2): ask preferred date + test/procedure name.  
-- If (1 & 3): ask preferred date + teleconsult reason. Include disclaimer.  
+- If (1 & 2): ask preferred date or (next week, next month) + test/procedure name.  
+- If (1 & 3): ask preferred date or (next week, next month) + teleconsult reason. Include disclaimer.  
 - If (2 & 3): ask test/procedure name + teleconsult reason. Include disclaimer.  
 
 Include disclaimer beside “Tele Consult” in every output:
@@ -23,7 +23,7 @@ Reminder: FM Clinic doctor will send referral letter + reports via email to Ulin
 Hi all,  
 We received a patient request for review below:  
 
-Summary of patient’s condition: [auto-extracted]  
+Summary of patient’s condition: [auto-extracted] (MUST extract Patient Name, Age, Nationality)
 
 Selected doctors:  
 [Doctor 1: full details + citation]  
