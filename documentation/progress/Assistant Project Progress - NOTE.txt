@@ -1,0 +1,78 @@
+as per 27-October-2025 Status
+-----------------------------
+
+1. what has been done
+
+	1.1 Check Render & MongoDB Cost
+	1.2 UI for chat assistant & login
+	1.3 UI & Backend integration for the assistant dashboard
+	1.4 Backend integration with OpenAI
+	1.5. Backend & Database integration
+	1.6. Change domain name website
+	1.7. Handle backend to display the assistant list based on assigned to user
+			 
+			 user: fmclinic 
+			 password: fmclinic
+		   (list only fm clinic assistant)
+
+	1.8. Finish configuration for FM Clinic (Prompt, File Knowledge Provided by Kaijie)
+	
+	1.9. Change email -> username input for login auth
+
+	1.10. Implement Upload File & OCR on Backend 
+
+	1.11. Implement Upload Function on Frontend + integrate to Backend API
+
+	1.12. Admin Auth listing all chat
+	
+	1.13. Admin export all chat function under one button for Admin access.
+		- generate per-pdf
+		- organize on folder (Assistance -> User)
+		- zip it
+		- delete all chat history record
+	
+	1.14. upload to zoho work drive "Assistant" for the exported zip above
+	
+	1.15. Apply FM Clinic during iniatiate new session, the Assistant will reply to us first to upload document, instead user need to begin the chat first.
+	
+	1.16. Create Admin Panel (in modal) UI
+	
+	1.17. Create User Record & asssign assistant Integration (FE + BE)
+	
+	1.18. Listing user record integration
+			
+			
+
+
+2. what is current action
+			 
+			(Hadi)
+			2.1. Integration delete user record
+			2.2. Create edit form user & assistant like (create mode), but edit form.
+			
+			(Sumaiya)
+			2.1. Already give access to sumaiya & manage run on localhost, Sumaiya will learn the current project code logic.
+	
+	
+	
+	
+3. what is next
+	
+	(Sumaiya)
+	3.1. integrate when chat finish for singlife assistant
+		-> event triggered during singlife assistance close the chat flag.
+		-> export current chat after the end the conversation (DEV to pick option 1 or 2 for best approach)
+			1. sent email ZOHO (email subject & content based on the chat history)
+			2. upload the export chat pdf file into google drive (like existing export chat PDF per-session)
+	
+	(Hadi/Sumaiya) (Requested by Galvin)
+	3.2. Implement Assistant Form to edit the System Prompt based on each assistant system prompt on UI (Admin)
+		(Better implement after Admin Panel is already there & at this moment if need to edit the prompt can edit it under backend/prompts/{prompt file} by github commit & push (main branch))
+		- things to do:
+			1. UI for Assistant form
+			2. New API for Assistant Config Submission (System Prompt, Upload Docs for Vector, Project API Key) (Upload Docs Code for Vector can refer to existing util file "vector-upload.js")
+
+		
+NOTE:
+- All Prompt + docs is based on existing one from GPT, developer purpose is to integrate only on this project, in case not expected result need to edit the prompt level only & not the code level.
+- Response will be based on OpenAI, no manual intervation from the backend code regards to the chat response.
