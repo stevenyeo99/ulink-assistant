@@ -250,6 +250,7 @@ async function doUpdateChatTitle(req, res) {
 
 async function doStreamChatV2(req, res) {
   try {
+    // console.log(`API started at ${Date.now()} ms:`);
     // Start get-set (payload & file upload)
     const payload = req.body?.payload;
     let body = {};
@@ -299,6 +300,7 @@ async function doStreamChatV2(req, res) {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders?.();
 
     // Handling the Upload & OCR (if uploaded)
     let isOcr = false;
@@ -336,7 +338,7 @@ async function doStreamChatV2(req, res) {
         instructions: systemPromptIns,
         input: [
             { role: 'system', content: 'Answer strictly from your system knowledge.' },
-            ...history,
+            ...history.slice(-4),
             { 
               role: 'user', 
               content: content,  
@@ -352,6 +354,7 @@ async function doStreamChatV2(req, res) {
       }];
     }
 
+    // console.log(`Stream started at ${Date.now()} ms:`);
     let stream = null;
     let isRetry = true;
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -406,6 +409,7 @@ async function doStreamChatV2(req, res) {
         if (event.type === 'response.output_text.delta') {
           msg += event.delta;
           res.write(`data: ${JSON.stringify({ delta: event.delta })}\n\n`);
+          res.flush?.();
         } else if (event.type === 'response.completed') {
           res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
         } else if (event.type === 'error') {
@@ -413,6 +417,7 @@ async function doStreamChatV2(req, res) {
         }
       }
     }
+    // console.log(`Stream ended at ${Date.now()} ms:`);
 
     // Store Assistant Messages
     await addMessage({
@@ -424,6 +429,7 @@ async function doStreamChatV2(req, res) {
 
     // console.log('\r\n\r\n ----OPENAI RESPONSE: \r\n\r\n');
     // console.log(msg);
+    // console.log(`API ended at ${Date.now()} ms:`);
     return res.end();
   } catch (err) {
     console.error(err);
