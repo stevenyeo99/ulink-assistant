@@ -1,4 +1,4 @@
-as per 27-October-2025 Status
+as per 31-October-2025 Status
 -----------------------------
 
 1. what has been done
@@ -47,13 +47,9 @@ as per 27-October-2025 Status
 2. what is current action
 			 
 			(Hadi)
-			2.1. Integration delete user record
-			2.2. Create edit form user & assistant like (create mode), but edit form.
-			
-			(Sumaiya)
-			2.1. Already give access to sumaiya & manage run on localhost, Sumaiya will learn the current project code logic.
-	
-	
+			2.1. Integration delete user record API = left with the API
+			2.2. Create edit form user & assistant like (create mode), but edit form UI. = in-progress almost done on UI Part
+			2.3. Edit API & Integration it.	
 	
 	
 3. what is next
@@ -63,15 +59,16 @@ as per 27-October-2025 Status
 		-> event triggered during singlife assistance close the chat flag.
 		-> export current chat after the end the conversation (DEV to pick option 1 or 2 for best approach)
 			1. sent email ZOHO (email subject & content based on the chat history)
-			2. upload the export chat pdf file into google drive (like existing export chat PDF per-session)
+			2. upload the export chat pdf file into zoho workdrive (like existing export chat PDF per-session)
 	
 	(Hadi/Sumaiya) (Requested by Galvin)
 	3.2. Implement Assistant Form to edit the System Prompt based on each assistant system prompt on UI (Admin)
 		(Better implement after Admin Panel is already there & at this moment if need to edit the prompt can edit it under backend/prompts/{prompt file} by github commit & push (main branch))
 		- things to do:
-			1. UI for Assistant form
-			2. New API for Assistant Config Submission (System Prompt, Upload Docs for Vector, Project API Key) (Upload Docs Code for Vector can refer to existing util file "vector-upload.js")
-
+			1. UI for Assistant form (System Prompt)
+			2. New API for Assistant Config Submission (System Prompt, Upload Docs for OpenAI Vector) (Upload Docs Code for Vector can refer to existing util file "vector-upload.js")
+			3. Integrate the UI with API for the assistant edit prompt.
+		(configure new project key need to be done from OpenAI manually & configure on DB config level)
 		
 NOTE:
 - All Prompt + docs is based on existing one from GPT, developer purpose is to integrate only on this project, in case not expected result need to edit the prompt level only & not the code level.
